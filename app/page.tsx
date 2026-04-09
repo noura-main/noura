@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { FoodCard } from "@/components/FoodCard";
-import { HeroCard } from "@/components/HeroCard";
-import { Navbar } from "@/components/Navbar";
+import { FoodCard } from "@/components/landing/FoodCard";
+import { HeroCard } from "@/components/landing/HeroCard";
+import { Navbar } from "@/components/landing/Navbar";
 
 export default function Home() {
   const meals = [
