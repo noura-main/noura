@@ -1,0 +1,36 @@
+{"sessionId":"1bc6e4","runId":"pre-fix","hypothesisId":"H1","location":"app/page.tsx:65","message":"Image URLs prepared in Home component","data":{"aboutImageUrlCount":2},"timestamp":1775507529134}
+{"sessionId":"1bc6e4","runId":"pre-fix","hypothesisId":"H2","location":"app/page.tsx:72","message":"Parsed image URL hostnames","data":{"uniqueHosts":["images.unsplash.com"]},"timestamp":1775507529135}
+{"sessionId":"1bc6e4","runId":"pre-fix","hypothesisId":"H3","location":"app/page.tsx:79","message":"Unsplash host used by About images","data":{"usesUnsplash":true},"timestamp":1775507529135}
+{"sessionId":"1bc6e4","runId":"pre-fix","hypothesisId":"H1","location":"app/page.tsx:65","message":"Image URLs prepared in Home component","data":{"aboutImageUrlCount":2},"timestamp":1775507542678}
+{"sessionId":"1bc6e4","runId":"pre-fix","hypothesisId":"H2","location":"app/page.tsx:72","message":"Parsed image URL hostnames","data":{"uniqueHosts":["images.unsplash.com"]},"timestamp":1775507542678}
+{"sessionId":"1bc6e4","runId":"pre-fix","hypothesisId":"H3","location":"app/page.tsx:79","message":"Unsplash host used by About images","data":{"usesUnsplash":true},"timestamp":1775507542678}
+{"sessionId":"1bc6e4","runId":"pre-fix","hypothesisId":"H1","location":"app/page.tsx:65","message":"Image URLs prepared in Home component","data":{"aboutImageUrlCount":2},"timestamp":1775507542869}
+{"sessionId":"1bc6e4","runId":"pre-fix","hypothesisId":"H2","location":"app/page.tsx:72","message":"Parsed image URL hostnames","data":{"uniqueHosts":["images.unsplash.com"]},"timestamp":1775507542869}
+{"sessionId":"1bc6e4","runId":"pre-fix","hypothesisId":"H3","location":"app/page.tsx:79","message":"Unsplash host used by About images","data":{"usesUnsplash":true},"timestamp":1775507542870}
+{"sessionId":"1bc6e4","runId":"pre-fix","hypothesisId":"H1","location":"app/page.tsx:65","message":"Image URLs prepared in Home component","data":{"aboutImageUrlCount":2},"timestamp":1775507978484}
+{"sessionId":"1bc6e4","runId":"pre-fix","hypothesisId":"H2","location":"app/page.tsx:72","message":"Parsed image URL hostnames","data":{"uniqueHosts":["images.unsplash.com"]},"timestamp":1775507978485}
+{"sessionId":"1bc6e4","runId":"pre-fix","hypothesisId":"H3","location":"app/page.tsx:79","message":"Unsplash host used by About images","data":{"usesUnsplash":true},"timestamp":1775507978485}
+{"sessionId":"1bc6e4","runId":"pre-fix","hypothesisId":"H1","location":"app/page.tsx:65","message":"Image URLs prepared in Home component","data":{"aboutImageUrlCount":2},"timestamp":1775508066647}
+{"sessionId":"1bc6e4","runId":"pre-fix","hypothesisId":"H2","location":"app/page.tsx:72","message":"Parsed image URL hostnames","data":{"uniqueHosts":["images.unsplash.com"]},"timestamp":1775508066647}
+{"sessionId":"1bc6e4","runId":"pre-fix","hypothesisId":"H3","location":"app/page.tsx:79","message":"Unsplash host used by About images","data":{"usesUnsplash":true},"timestamp":1775508066647}
+{"sessionId":"1bc6e4","runId":"pre-fix","hypothesisId":"H1","location":"app/page.tsx:65","message":"Image URLs prepared in Home component","data":{"aboutImageUrlCount":2},"timestamp":1775508070556}
+{"sessionId":"1bc6e4","runId":"pre-fix","hypothesisId":"H2","location":"app/page.tsx:72","message":"Parsed image URL hostnames","data":{"uniqueHosts":["images.unsplash.com"]},"timestamp":1775508070557}
+{"sessionId":"1bc6e4","runId":"pre-fix","hypothesisId":"H3","location":"app/page.tsx:79","message":"Unsplash host used by About images","data":{"usesUnsplash":true},"timestamp":1775508070557}
+{"sessionId":"1bc6e4","runId":"pre-fix","hypothesisId":"H1","location":"app/page.tsx:65","message":"Image URLs prepared in Home component","data":{"aboutImageUrlCount":2},"timestamp":1775508073603}
+{"sessionId":"1bc6e4","runId":"pre-fix","hypothesisId":"H2","location":"app/page.tsx:72","message":"Parsed image URL hostnames","data":{"uniqueHosts":["images.unsplash.com"]},"timestamp":1775508073603}
+{"sessionId":"1bc6e4","runId":"pre-fix","hypothesisId":"H3","location":"app/page.tsx:79","message":"Unsplash host used by About images","data":{"usesUnsplash":true},"timestamp":1775508073603}
+{"sessionId":"1bc6e4","runId":"pre-fix","hypothesisId":"H1","location":"app/page.tsx:65","message":"Image URLs prepared in Home component","data":{"aboutImageUrlCount":2},"timestamp":1775508078049}
+{"sessionId":"1bc6e4","runId":"pre-fix","hypothesisId":"H2","location":"app/page.tsx:72","message":"Parsed image URL hostnames","data":{"uniqueHosts":["images.unsplash.com"]},"timestamp":1775508078049}
+{"sessionId":"1bc6e4","runId":"pre-fix","hypothesisId":"H3","location":"app/page.tsx:79","message":"Unsplash host used by About images","data":{"usesUnsplash":true},"timestamp":1775508078050}
+{"sessionId":"1bc6e4","runId":"pre-fix","hypothesisId":"H1","location":"app/page.tsx:65","message":"Image URLs prepared in Home component","data":{"aboutImageUrlCount":2},"timestamp":1775508083301}
+{"sessionId":"1bc6e4","runId":"pre-fix","hypothesisId":"H2","location":"app/page.tsx:72","message":"Parsed image URL hostnames","data":{"uniqueHosts":["images.unsplash.com"]},"timestamp":1775508083302}
+{"sessionId":"1bc6e4","runId":"pre-fix","hypothesisId":"H3","location":"app/page.tsx:79","message":"Unsplash host used by About images","data":{"usesUnsplash":true},"timestamp":1775508083302}
+{"sessionId":"1bc6e4","runId":"pre-fix","hypothesisId":"H1","location":"app/page.tsx:65","message":"Image URLs prepared in Home component","data":{"aboutImageUrlCount":2},"timestamp":1775508086485}
+{"sessionId":"1bc6e4","runId":"pre-fix","hypothesisId":"H2","location":"app/page.tsx:72","message":"Parsed image URL hostnames","data":{"uniqueHosts":["images.unsplash.com"]},"timestamp":1775508086485}
+{"sessionId":"1bc6e4","runId":"pre-fix","hypothesisId":"H3","location":"app/page.tsx:79","message":"Unsplash host used by About images","data":{"usesUnsplash":true},"timestamp":1775508086485}
+{"sessionId":"1bc6e4","runId":"pre-fix","hypothesisId":"H1","location":"app/page.tsx:65","message":"Image URLs prepared in Home component","data":{"aboutImageUrlCount":2},"timestamp":1775508092612}
+{"sessionId":"1bc6e4","runId":"pre-fix","hypothesisId":"H2","location":"app/page.tsx:72","message":"Parsed image URL hostnames","data":{"uniqueHosts":["images.unsplash.com"]},"timestamp":1775508092613}
+{"sessionId":"1bc6e4","runId":"pre-fix","hypothesisId":"H3","location":"app/page.tsx:79","message":"Unsplash host used by About images","data":{"usesUnsplash":true},"timestamp":1775508092613}
+{"sessionId":"1bc6e4","runId":"pre-fix","hypothesisId":"H1","location":"app/page.tsx:65","message":"Image URLs prepared in Home component","data":{"aboutImageUrlCount":2},"timestamp":1775508095581}
+{"sessionId":"1bc6e4","runId":"pre-fix","hypothesisId":"H2","location":"app/page.tsx:72","message":"Parsed image URL hostnames","data":{"uniqueHosts":["images.unsplash.com"]},"timestamp":1775508095581}
+{"sessionId":"1bc6e4","runId":"pre-fix","hypothesisId":"H3","location":"app/page.tsx:79","message":"Unsplash host used by About images","data":{"usesUnsplash":true},"timestamp":1775508095581}
