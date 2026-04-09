@@ -3,14 +3,14 @@
 import { useState, useEffect } from 'react';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
-type UserField = 'full_name' | 'email'; 
+type TimeField = 'breakfast' | 'lunch' | 'dinner'; 
 
-interface UserInfoProps {
-  field: UserField;
+interface MealTimeDay {
+  field: TimeField;
   className?: string;
 }
 
-export default function UserInfo({ field, className }: UserInfoProps) {
+export default function MealPlan({ field, className }: MealTimeDay) {
   const [value, setValue] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -23,17 +23,23 @@ export default function UserInfo({ field, className }: UserInfoProps) {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        if (field === 'email') {
-          setValue(user.email ?? null);
-        } else {
-          const { data } = await supabase
-            .from('profiles')
-            .select(field)
-            .eq('id', user.id)
-            .single();
-          
-          setValue(data?.[field] ?? null);
-        }
+        const { data, error } = await supabase
+            .from('meal_plans')
+            .select('recipe_name')
+            .eq('user_id', user.id)
+            .eq('date', new Date().toLocaleDateString('en-CA'))
+            .eq('meal_type', field)
+            .maybeSingle();
+        
+            if (error) throw error;
+        
+        console.log(field);
+      if (data) {
+        setValue(data.recipe_name);
+      } else {
+        setValue(null);
+      }
+
       } catch (err) {
         console.error(`Error fetching ${field}:`, err);
       } finally {
@@ -46,13 +52,9 @@ export default function UserInfo({ field, className }: UserInfoProps) {
 
   if (loading) return;
 
-  const displayValue = (field === 'full_name') 
-    ? value?.split(' ')[0] 
-    : value;
-
   return (
     <span className={className}>
-      {displayValue || 'Not found'}
+      {value ?? "Nothing planned yet !"}
     </span>
   );
 }

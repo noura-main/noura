@@ -1,20 +1,18 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import type { LucideIcon } from "lucide-react";
-import { Bot, ClipboardList, Coins, SquareChartGantt, Target } from "lucide-react";
 
 type SmartTool = {
   label: string;
-  icon: LucideIcon;
+  icon: string;
 };
 
 const SMART_TOOLS: SmartTool[] = [
-  { label: "AI Assistant", icon: Bot },
-  { label: "Health Insight", icon: SquareChartGantt },
-  { label: "Scan Receipt", icon: ClipboardList },
-  { label: "Smart Swaps", icon: Coins },
-  { label: "Goal Tracker", icon: Target },
+  { label: "AI Assistant", icon: "/dashboard/robot.png" },
+  { label: "Health Insight", icon: "/dashboard/analytics.png" },
+  { label: "Scan Receipt", icon: "/dashboard/receipt.png" },
+  { label: "Smart Swaps", icon: "/dashboard/swap.png" },
+  { label: "Goal Tracker", icon: "/dashboard/target.png" },
 ];
 
 export function SmartTools() {
@@ -44,8 +42,8 @@ export function SmartTools() {
 
   return (
     <>
-      <div className="flex flex-wrap gap-3">
-        {SMART_TOOLS.map(({ label, icon: Icon }, index) => {
+      <div className="flex flex-wrap gap-3 justify-center">
+        {SMART_TOOLS.map(({ label, icon }, index) => {
           const isActive = index === activeIndex;
 
           return (
@@ -58,14 +56,14 @@ export function SmartTools() {
               }}
               aria-pressed={isActive}
               aria-haspopup="dialog"
-              className={`flex min-h-[120px] w-[152px] flex-col justify-between rounded-3xl p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0b4a5d]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#eceef0] ${
+              className={`flex min-h-[165px] w-[160px] flex-col flex justify-center gap-y-4 rounded-3xl p-3 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0b4a5d]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#eceef0] ${
                 isActive
-                  ? "bg-[#0b4a5d] text-white"
+                  ? "bg-[#063643] text-white"
                   : "bg-white text-[#0d2e38] shadow-sm hover:bg-[#f7fafb]"
               }`}
             >
-              <Icon className="h-8 w-8" />
-              <p className="text-lg font-medium leading-tight">{label}</p>
+              <img src={icon} className="h-40 w-40"/>
+              <p className="text-xl font-medium leading-tight">{label}</p>
             </button>
           );
         })}

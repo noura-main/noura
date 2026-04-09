@@ -1,4 +1,7 @@
-import UserGreeting from "@/components/dashboard/UserInfo";
+import UserInfo from "@/components/dashboard/UserInfo";
+import DailyTracking from "@/components/dashboard/DailyTracking";
+import MealPlan from "@/components/dashboard/MealPlan";
+import QuickSnackGen from "@/components/dashboard/QuickSnack"
 
 import {
   ChefHat,
@@ -32,15 +35,15 @@ const navItems = [
 ];
 
 const meals = [
-  { label: "Breakfast", detail: "Oatmeal + berries", icon: Wheat },
-  { label: "Lunch", detail: "Chicken wrap", icon: Salad },
-  { label: "Dinner", detail: "Pasta primavera", icon: Soup },
+  { label: "Breakfast", detail: "breakfast", icon: Wheat },
+  { label: "Lunch", detail: "lunch", icon: Salad },
+  { label: "Dinner", detail: "dinner", icon: Soup },
 ];
 
 export default function DashboardPage() {
   return (
-    <div className="h-screen bg-[#f3f4f6] p-4 text-[#0d2e38]">
-      <div className="mx-auto grid h-full max-w-[1500px] grid-cols-1 gap-4 lg:grid-cols-[220px_minmax(0,1fr)_300px]">
+    <div className="h-screen bg-[#f3f4f6] p-3 text-[#0d2e38]">
+      <div className="mx-auto grid h-full max-w-[1500px] grid-cols-1 gap-2 lg:grid-cols-[220px_minmax(0,1fr)_300px]">
         <aside className="hidden h-full flex-col rounded-3xl bg-[#ffffff] p-5 text-white lg:flex">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl text-xs font-semibold uppercase tracking-wide m-2">
             <img
@@ -137,15 +140,11 @@ export default function DashboardPage() {
               </div>
             </section>
 
+            <hr className="mx-auto my-6 h-1 w-150 rounded border-0 bg-[#0d2e38]" />
+
             <section>
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-3xl font-semibold">Smart Tools</h2>
-                <button
-                  type="button"
-                  className="rounded-full bg-[#0d2e38] px-4 py-1.5 text-sm font-semibold text-white"
-                >
-                  See All
-                </button>
               </div>
               <SmartTools />
             </section>
@@ -153,12 +152,6 @@ export default function DashboardPage() {
             <section>
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-3xl font-semibold">Nearby Foodspots</h2>
-                <button
-                  type="button"
-                  className="rounded-full bg-[#0d2e38] px-4 py-1.5 text-sm font-semibold text-white"
-                >
-                  See All
-                </button>
               </div>
               <NearbyFoodMapLoader />
             </section>
@@ -169,13 +162,12 @@ export default function DashboardPage() {
           <header className="flex items-start justify-between border-b border-[#edf1f4] pb-4">
             <div>
               <p className="text-2xl font-semibold">
-                Hello, <UserGreeting field="full_name" /> !!
+                Hello, <UserInfo field="full_name" /> !!
               </p>
               <p className="text-sm text-[#6a7f87]">
-                <UserGreeting field="email" />
+                <UserInfo field="email" />
               </p>
             </div>
-            {/* TODO: replace avatar placeholder with user profile image */}
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#f2f4f6]">
               <UserRound className="h-6 w-6 text-[#0d2e38]" />
             </div>
@@ -193,7 +185,9 @@ export default function DashboardPage() {
                     Calories
                   </p>
                 </div>
-                <p className="text-4xl font-semibold leading-none">1,850</p>
+                <p className="text-4xl font-semibold leading-none">
+                  <DailyTracking field="calories"/>
+                </p>
                 <p className="mt-1 text-sm text-white/80">Today</p>
               </article>
               <article className="rounded-2xl border border-[#e5eaed] bg-white p-3">
@@ -203,7 +197,7 @@ export default function DashboardPage() {
                   </p>
                 </div>
                 <p className="text-4xl font-semibold leading-none text-[#0d2e38]">
-                  75g
+                  <DailyTracking field="protein"/>g
                 </p>
                 <p className="mt-1 text-sm text-[#6a7f87]">Today</p>
               </article>
@@ -216,17 +210,21 @@ export default function DashboardPage() {
               <span className="text-[#8aa0a8]">...</span>
             </div>
             <div className="space-y-2">
-              {meals.map(({ label, detail, icon: Icon }) => (
+              {meals.map((meal) => (
                 <article
-                  key={label}
+                  key={meal.label}
                   className="flex items-center gap-3 rounded-2xl border border-[#e8edf0] bg-[#f8fafb] p-3"
                 >
                   <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#dceef1] text-[#0b4a5d]">
-                    <Icon className="h-5 w-5" />
+                    <meal.icon className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold">{label}</p>
-                    <p className="text-sm text-[#6a7f87]">{detail}</p>
+                    <p className="text-sm font-semibold">{meal.label}</p>
+                    <p className="text-sm text-[#6a7f87]">
+                    <MealPlan 
+                      field={meal.detail as 'breakfast' | 'lunch' | 'dinner'} 
+                    />
+                    </p>
                   </div>
                 </article>
               ))}
@@ -241,9 +239,11 @@ export default function DashboardPage() {
                   <ShoppingBasket className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="font-semibold">Carrot Ribbon Soy Salad</p>
+                  <p className="font-semibold">
+                    <QuickSnackGen field="recipe_name"/>
+                  </p>
                   <p className="text-sm text-white/80">
-                    Peel carrots into ribbons, toss with soy sauce + sesame oil.
+                  <QuickSnackGen field="instructions"/>
                   </p>
                 </div>
               </div>
