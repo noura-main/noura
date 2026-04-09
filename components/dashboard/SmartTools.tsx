@@ -63,7 +63,7 @@ export function SmartTools() {
               }`}
             >
               <img src={icon} className="h-40 w-40"/>
-              <p className="text-xl font-medium leading-tight">{label}</p>
+              <p className="text-xl font-semibold leading-tight">{label}</p>
             </button>
           );
         })}

@@ -11,13 +11,13 @@ import {
 } from "lucide-react";
 
 const navItems = [
-  { label: "Dashboard", icon: SquareChartGantt, active: true },
-  { label: "My Kitchen", icon: ChefHat },
-  { label: "Recipes", icon: FileText },
-  { label: "Meal Plan", icon: UtensilsCrossed },
-  { label: "Budget", icon: WalletCards },
-  { label: "Preferences", icon: Heart },
-  { label: "Community", icon: MapPinned },
+  { label: "Dashboard", icon: SquareChartGantt, active: true, href: "dashboard" },
+  { label: "My Kitchen", icon: ChefHat, active: false, href: "mykitchen"},
+  { label: "Recipes", icon: FileText, active: false, href: "recipes"},
+  { label: "Meal Plan", icon: UtensilsCrossed, active: false, href: "mealplan"},
+  { label: "Budget", icon: WalletCards, active: false, href: "budget"},
+  { label: "Preferences", icon: Heart, active: false, href: "preferences"},
+  { label: "Community", icon: MapPinned, active: false, href: "community"},
 ];
 
 export function NavbarUser() {
