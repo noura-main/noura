@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { useUserData } from '@/lib/context/user-data';
 
-type TimeField = 'breakfast' | 'lunch' | 'dinner'; 
+type TimeField = 'breakfast' | 'lunch' | 'dinner';
 
 interface MealTimeDay {
   field: TimeField;
@@ -11,50 +10,13 @@ interface MealTimeDay {
 }
 
 export default function MealPlan({ field, className }: MealTimeDay) {
-  const [value, setValue] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const data = useUserData();
 
-  useEffect(() => {
-    async function fetchField() {
-      try {
-        const supabase = getSupabaseBrowserClient();
-        if (!supabase) return;
-
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const { data, error } = await supabase
-            .from('meal_plans')
-            .select('recipe_name')
-            .eq('user_id', user.id)
-            .eq('date', new Date().toLocaleDateString('en-CA'))
-            .eq('meal_type', field)
-            .maybeSingle();
-        
-            if (error) throw error;
-        
-        console.log(field);
-      if (data) {
-        setValue(data.recipe_name);
-      } else {
-        setValue(null);
-      }
-
-      } catch (err) {
-        console.error(`Error fetching ${field}:`, err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchField();
-  }, [field]);
-
-  if (loading) return;
+  if (data.loading) return null;
 
   return (
     <span className={className}>
-      {value ?? "Nothing planned yet !"}
+      {data[field] ?? 'Nothing planned yet !'}
     </span>
   );
 }

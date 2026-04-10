@@ -14,7 +14,6 @@ function LoginFormInner() {
   const [error, setError] = useState<string | null>(null);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
   const [showLoginPassword, setShowLoginPassword] = useState(false);
 
   const registeredBanner =
@@ -91,16 +90,7 @@ function LoginFormInner() {
             <EyeIcon className="h-5 w-5" />
           </button>
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-          <label className="flex cursor-pointer items-center gap-2 text-[#35515B]">
-            <input
-              type="checkbox"
-              checked={rememberMe}
-              onChange={(e) => setRememberMe(e.target.checked)}
-              className="h-4 w-4 rounded-full border-[#c5cdd0] text-[#0C2F3D] focus:ring-[#0C5D6E]"
-            />
-            Remember Me
-          </label>
+        <div className="flex flex-wrap justify-center gap-2 text-sm">
           <Link
             href="/auth/forgot-password"
             className="text-[#6b7c80] hover:text-[#0C2F3D]"

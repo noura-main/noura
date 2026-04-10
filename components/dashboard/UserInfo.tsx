@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { useUserData } from '@/lib/context/user-data';
 
-type UserField = 'full_name' | 'email'; 
+type UserField = 'full_name' | 'email';
 
 interface UserInfoProps {
   field: UserField;
@@ -11,48 +10,14 @@ interface UserInfoProps {
 }
 
 export default function UserInfo({ field, className }: UserInfoProps) {
-  const [value, setValue] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const data = useUserData();
 
-  useEffect(() => {
-    async function fetchField() {
-      try {
-        const supabase = getSupabaseBrowserClient();
-        if (!supabase) return;
+  if (data.loading) return null;
 
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+  const value =
+    field === 'full_name'
+      ? (data.full_name?.split(' ')[0] ?? 'Not found')
+      : (data.email ?? 'Not found');
 
-        if (field === 'email') {
-          setValue(user.email ?? null);
-        } else {
-          const { data } = await supabase
-            .from('profiles')
-            .select(field)
-            .eq('id', user.id)
-            .single();
-          
-          setValue(data?.[field] ?? null);
-        }
-      } catch (err) {
-        console.error(`Error fetching ${field}:`, err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchField();
-  }, [field]);
-
-  if (loading) return;
-
-  const displayValue = (field === 'full_name') 
-    ? value?.split(' ')[0] 
-    : value;
-
-  return (
-    <span className={className}>
-      {displayValue || 'Not found'}
-    </span>
-  );
+  return <span className={className}>{value}</span>;
 }
