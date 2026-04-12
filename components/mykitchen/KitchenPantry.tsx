@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
+import FallbackImage from "@/components/ui/FallbackImage";
 import { Search, Plus, Minus, ScanLine, Trash2, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
@@ -84,12 +85,49 @@ async function fetchPixabayImage(query: string): Promise<string> {
     url.searchParams.set("image_type", "photo");
     url.searchParams.set("category", "food");
     url.searchParams.set("safesearch", "true");
-    url.searchParams.set("per_page", "3");
+    url.searchParams.set("per_page", "6");
 
     const res = await fetch(url.toString());
     if (!res.ok) return "";
     const data = await res.json();
-    const imageUrl: string = data.hits?.[0]?.webformatURL ?? "";
+    const hits = data.hits ?? [];
+
+    if (!hits.length) {
+      // Try a more specific query variants (singular/plural, "raw {name}", "{name} ingredient")
+      const variants = [query, `${query} ingredient`, `raw ${query}`, `${query}s`, `${query} fresh`];
+      for (const v of variants) {
+        const u2 = new URL("https://pixabay.com/api/");
+        u2.searchParams.set("key", PIXABAY_API_KEY);
+        u2.searchParams.set("q", v);
+        u2.searchParams.set("image_type", "photo");
+        u2.searchParams.set("category", "food");
+        u2.searchParams.set("safesearch", "true");
+        u2.searchParams.set("per_page", "6");
+        const r2 = await fetch(u2.toString());
+        if (!r2.ok) continue;
+        const d2 = await r2.json();
+        if ((d2.hits ?? []).length) {
+          imageCache.set(key, d2.hits[0].webformatURL as string);
+          return d2.hits[0].webformatURL as string;
+        }
+      }
+      return "";
+    }
+
+    // Prefer hits whose tags match tokens from the query (reduces generic stock images)
+    const tokens = (query || "").toLowerCase().split(/[^a-z0-9]+/).filter((t) => t && t.length > 2);
+    for (const hit of hits) {
+      const tags = (hit.tags as string | undefined)?.toLowerCase() ?? "";
+      for (const tk of tokens) {
+        if (tags.includes(tk)) {
+          imageCache.set(key, hit.webformatURL as string);
+          return hit.webformatURL as string;
+        }
+      }
+    }
+
+    // Fallback: return first hit
+    const imageUrl: string = hits[0].webformatURL ?? "";
     imageCache.set(key, imageUrl);
     return imageUrl;
   } catch {
@@ -294,7 +332,7 @@ function IngredientCard({
         <div className="absolute inset-0 [backface-visibility:hidden] flex flex-col items-center rounded-3xl bg-[#063643] pb-4 pt-5">
           <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white text-5xl overflow-hidden">
             {item.imageUrl ? (
-              <img src={item.imageUrl} alt={item.name} className="h-full w-full rounded-full object-cover" />
+              <FallbackImage src={item.imageUrl} alt={item.name} fallbackCategory={item.category} className="h-full w-full rounded-full object-cover" />
             ) : (
               <span role="img" aria-label={item.name}>{item.emoji}</span>
             )}
@@ -695,10 +733,7 @@ export default function KitchenPantry() {
           </h1>
         </div>
         <div className="pointer-events-none absolute bottom-0 right-6 flex items-end gap-2 text-6xl leading-none select-none">
-          <img 
-          src={"/kitchen/kitchen.png"}
-          className="h-50 w-80"
-          />
+          <FallbackImage src={"/kitchen/kitchen.png"} alt="kitchen" className="h-50 w-80" />
         </div>
       </div>
 
@@ -882,9 +917,10 @@ export default function KitchenPantry() {
             <div className="flex items-center gap-4 mb-5">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#063643] overflow-hidden">
                 {pendingIngredient.resolvedImageUrl ? (
-                  <img
+                  <FallbackImage
                     src={pendingIngredient.resolvedImageUrl}
                     alt={pendingIngredient.name}
+                    fallbackCategory={pendingIngredient.category}
                     className="h-full w-full object-cover"
                   />
                 ) : (

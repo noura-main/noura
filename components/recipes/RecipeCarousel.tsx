@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { ChevronLeft, ChevronRight, Plus, ChevronDown, Sparkles } from "lucide-react";
-import Image from "next/image";
+import FallbackImage from "@/components/ui/FallbackImage";
 import type { MealType, Recipe, GeneratedRecipes } from "@/lib/recipes/types";
 import AddToMealPlanModal from "@/components/recipes/AddToMealPlanModal";
 
@@ -188,14 +188,9 @@ export default function RecipeCarousel({
               >
                 {/* Food image */}
                 <div className="relative h-[175px] w-full overflow-hidden bg-gray-100">
-                  <Image
-                    src={recipe.image}
-                    alt={recipe.name}
-                    fill
-                    sizes="200px"
-                    className="object-cover"
-                    unoptimized
-                  />
+                  <div className="absolute inset-0 h-full w-full">
+                    <FallbackImage src={recipe.image} alt={recipe.name} fill className="object-cover" />
+                  </div>
                 </div>
 
                 {/* Card body */}

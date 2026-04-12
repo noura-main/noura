@@ -1,5 +1,7 @@
 "use client";
 
+import FallbackImage from "@/components/ui/FallbackImage";
+
 interface RecipeHeroProps {
   onGenerate?: () => void;
 }
@@ -18,7 +20,7 @@ export default function RecipeHero({ onGenerate }: RecipeHeroProps) {
 
       {/* Illustration — absolute bottom-right, same pattern as My Kitchen */}
       <div className="pointer-events-none absolute bottom-0 right-6 flex items-end select-none">
-        <img
+        <FallbackImage
           src="/recipes/recipes.png"
           alt="Cooking illustration"
           className="h-48 w-72 object-contain object-bottom drop-shadow-2xl"

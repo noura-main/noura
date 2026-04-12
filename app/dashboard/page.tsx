@@ -20,6 +20,7 @@ import {
 
 import NearbyFoodMapLoader from "@/components/dashboard/NearbyFoodMapLoader";
 import { SmartTools } from "@/components/dashboard/SmartTools";
+import FallbackImage from "@/components/ui/FallbackImage";
 
 const navItems = [
   { label: "Dashboard", icon: SquareChartGantt, active: true },
@@ -87,10 +88,7 @@ export default function DashboardPage() {
 
               <div className="flex items-center justify-center">
                 <div className="flex h-44 w-64 items-center">
-                <img
-                  src="/dashboard/plate.png"
-                  alt="Nutrional Plate"
-                />
+                <FallbackImage src="/dashboard/plate.png" alt="Nutrional Plate" className="h-auto w-full object-contain" />
                 </div>
               </div>
             </section>

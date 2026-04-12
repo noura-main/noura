@@ -11,6 +11,7 @@ import {
   UserRound,
   LogOut,
 } from "lucide-react";
+import FallbackImage from "@/components/ui/FallbackImage";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -38,11 +39,7 @@ export function NavbarUser() {
   return (
     <aside className="hidden h-full flex-col rounded-3xl bg-[#ffffff] p-5 text-white lg:flex">
       <div className="flex h-12 w-12 items-center justify-center rounded-xl text-xs font-semibold uppercase tracking-wide m-2">
-        <img
-          src="/general/logo.png"
-          alt="Noura"
-          className="rounded-xl"
-        />
+        <FallbackImage src="/general/logo.png" alt="Noura" className="rounded-xl" />
       </div>
 
       <nav className="mt-6 space-y-1">

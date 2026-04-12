@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "refresh-images": "curl -X POST http://localhost:3000/api/images/refresh -H \"Content-Type: application/json\" -H \"x-refresh-secret: $IMAGE_REFRESH_SECRET\" -d '{\"force\":true}'"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.102.1",

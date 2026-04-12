@@ -7,6 +7,7 @@ import MealPlan from "@/components/dashboard/MealPlan";
 import { useUserData } from "@/lib/context/user-data";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { addToDailyLog } from "@/lib/utils/daily-log";
+import { deductIngredientsFromPantry } from "@/lib/utils/deduct-pantry";
 
 import {
   Salad,
@@ -41,10 +42,10 @@ export function UserStatBar() {
       if (!user) return;
       const today = new Date().toLocaleDateString("en-CA");
 
-      // Read snack macros fresh from DB (not stale context state)
+      // Read snack macros + ingredients fresh from DB (not stale context state)
       const { data: freshSnack } = await supabase
         .from("meal_plans")
-        .select("calories, protein_g, fat_g, carbs_g, recipe_name")
+        .select("calories, protein_g, fat_g, carbs_g, recipe_name, ingredients")
         .eq("user_id", user.id)
         .eq("date", today)
         .eq("meal_type", "snack")
@@ -99,6 +100,12 @@ export function UserStatBar() {
         fat_g: snackFat ?? 0,
         carbs_g: snackCarbs ?? 0,
       });
+
+      // Deduct used ingredients from pantry
+      const snackIngredients: string[] = Array.isArray(freshSnack?.ingredients)
+        ? (freshSnack.ingredients as unknown[]).map(String).filter(Boolean)
+        : [];
+      await deductIngredientsFromPantry(supabase, user.id, snackIngredients);
 
       // Delete snack from today's plan
       await supabase

@@ -3,6 +3,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useUserData } from "@/lib/context/user-data";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import FallbackImage from "@/components/ui/FallbackImage";
 
 function SavedTimestamp({ ts }: { ts: number }) {
   const diff = Date.now() - ts;
@@ -227,7 +228,7 @@ export function SmartTools() {
                   : "bg-white text-[#0d2e38] shadow-sm hover:bg-[#f7fafb]"
               }`}
             >
-              <img src={icon} className="h-40 w-40"/>
+              <FallbackImage src={icon} alt={label} className="h-40 w-40"/>
               <p className="text-xl font-semibold leading-tight">{label}</p>
             </button>
           );

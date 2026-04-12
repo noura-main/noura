@@ -10,6 +10,7 @@ import type { MealCardProps } from "@/components/mealplan/MealCard";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useUserData } from "@/lib/context/user-data";
 import { addToDailyLog } from "@/lib/utils/daily-log";
+import { deductIngredientsFromPantry } from "@/lib/utils/deduct-pantry";
 
 type DbMealType = "breakfast" | "lunch" | "dinner" | "snack";
 
@@ -153,10 +154,10 @@ export default function MealPlanPage() {
                           // @ts-ignore
                           const mealType = meal.meal_type as string;
 
-                          // Read macros fresh from DB (not from potentially-stale React state)
+                          // Read macros + ingredients fresh from DB (not from potentially-stale React state)
                           const { data: freshRow } = await supabase
                             .from("meal_plans")
-                            .select("calories, protein_g, fat_g, carbs_g")
+                            .select("calories, protein_g, fat_g, carbs_g, ingredients")
                             .eq("user_id", user.id)
                             .eq("date", date)
                             .eq("meal_type", mealType)
@@ -224,6 +225,10 @@ export default function MealPlanPage() {
                             fat_g: mealFat,
                             carbs_g: mealCarbs,
                           });
+
+                          // Deduct used ingredients from pantry
+                          const ingredientStrings = parseIngredients(freshRow?.ingredients);
+                          await deductIngredientsFromPantry(supabase, user.id, ingredientStrings);
 
                           refreshUserData();
                         } catch (err) {
