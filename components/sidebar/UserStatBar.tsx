@@ -1,14 +1,23 @@
+"use client";
+
+import { useState } from "react";
 import UserInfo from "@/components/dashboard/UserInfo";
 import DailyTracking from "@/components/dashboard/DailyTracking";
 import MealPlan from "@/components/dashboard/MealPlan";
-import QuickSnackGen from "@/components/dashboard/QuickSnack"
+import { useUserData } from "@/lib/context/user-data";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { addToDailyLog } from "@/lib/utils/daily-log";
 
 import {
   Salad,
   Soup,
   Wheat,
   ShoppingBasket,
-  UserRound
+  UserRound,
+  Flame,
+  Clock,
+  CheckCircle2,
+  AlertTriangle,
 } from "lucide-react";
 
 const meals = [
@@ -18,7 +27,113 @@ const meals = [
 ];
 
 export function UserStatBar() {
-  return(
+  const snack = useUserData();
+  const [showSnackModal, setShowSnackModal] = useState(false);
+  const [confirmEaten, setConfirmEaten] = useState(false);
+  const [deletingSnack, setDeletingSnack] = useState(false);
+
+  async function handleEatenConfirmed() {
+    setDeletingSnack(true);
+    try {
+      const supabase = getSupabaseBrowserClient();
+      if (!supabase) return;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const today = new Date().toLocaleDateString("en-CA");
+
+      // Read snack macros fresh from DB (not stale context state)
+      const { data: freshSnack } = await supabase
+        .from("meal_plans")
+        .select("calories, protein_g, fat_g, carbs_g, recipe_name")
+        .eq("user_id", user.id)
+        .eq("date", today)
+        .eq("meal_type", "snack")
+        .single();
+
+      let snackProtein: number = freshSnack?.protein_g ?? null;
+      let snackFat: number     = freshSnack?.fat_g     ?? null;
+      let snackCarbs: number   = freshSnack?.carbs_g   ?? null;
+      const snackCalories: number = freshSnack?.calories ?? snack.snack_calories ?? 0;
+
+      // If still null, fall back to user_generated_recipes blob
+      if ((snackProtein == null || snackFat == null || snackCarbs == null) && (freshSnack?.recipe_name || snack.snack_name)) {
+        const snackName = freshSnack?.recipe_name ?? snack.snack_name ?? "";
+        const { data: cachedRow } = await supabase
+          .from("user_generated_recipes")
+          .select("recipes")
+          .eq("user_id", user.id)
+          .order("generated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const allRecipes: { name?: string; protein_g?: number; fat_g?: number; carbs_g?: number }[] =
+          cachedRow?.recipes
+            ? Object.values(cachedRow.recipes as Record<string, unknown[]>).flat() as never
+            : [];
+
+        const match = allRecipes.find(
+          (r) => r.name?.toLowerCase().trim() === snackName.toLowerCase().trim()
+        );
+
+        snackProtein = (match?.protein_g != null ? Number(match.protein_g) : null) ?? 0;
+        snackFat     = (match?.fat_g     != null ? Number(match.fat_g)     : null) ?? 0;
+        snackCarbs   = (match?.carbs_g   != null ? Number(match.carbs_g)   : null) ?? 0;
+
+        if (match && (snackProtein > 0 || snackFat > 0 || snackCarbs > 0)) {
+          // Patch the DB row for future lookups
+          await supabase
+            .from("meal_plans")
+            .update({ protein_g: snackProtein, fat_g: snackFat, carbs_g: snackCarbs })
+            .eq("user_id", user.id)
+            .eq("date", today)
+            .eq("meal_type", "snack");
+        }
+      }
+
+      console.log("[snack eaten] writing to daily_logs:", { snackCalories, snackProtein, snackFat, snackCarbs });
+
+      // Accumulate into daily_logs
+      await addToDailyLog(supabase, user.id, today, {
+        calories: snackCalories,
+        protein: snackProtein ?? 0,
+        fat_g: snackFat ?? 0,
+        carbs_g: snackCarbs ?? 0,
+      });
+
+      // Delete snack from today's plan
+      await supabase
+        .from("meal_plans")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("date", today)
+        .eq("meal_type", "snack");
+
+      setShowSnackModal(false);
+      setConfirmEaten(false);
+      snack.refresh();
+    } catch (err) {
+      console.error("[UserStatBar] snack eaten error", err);
+    } finally {
+      setDeletingSnack(false);
+    }
+  }
+
+  const prepTimeLabel = snack.snack_prep_time
+    ? snack.snack_prep_time >= 60
+      ? `${Math.floor(snack.snack_prep_time / 60)}h ${snack.snack_prep_time % 60 > 0 ? `${snack.snack_prep_time % 60}m` : ""}`.trim()
+      : `${snack.snack_prep_time} min`
+    : null;
+
+  const instructionSteps = snack.snack_instructions
+    ? snack.snack_instructions
+        .replace(/\\n/g, "\n")
+        .split(/\n|(?=Step\s+\d+:)/i)
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : [];
+
+  return (
+    <>
     <aside className="hidden h-full flex-col rounded-3xl border border-[#e0e5e9] bg-white p-5 lg:flex">
           <header className="flex items-start justify-between border-b border-[#edf1f4] pb-4">
             <div>
@@ -94,22 +209,136 @@ export function UserStatBar() {
 
           <section className="mt-auto rounded-2xl bg-[#0d2e38] p-4 text-white">
             <h3 className="text-lg font-semibold">Quick Snack</h3>
-            <article className="mt-3 rounded-2xl bg-white/10 p-3">
+            <button
+              className="mt-3 w-full rounded-2xl bg-white/10 p-3 text-left transition hover:bg-white/20"
+              onClick={() => setShowSnackModal(true)}
+            >
               <div className="flex items-start gap-3">
-                <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/20">
+                <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/20">
                   <ShoppingBasket className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="font-semibold">
-                    <QuickSnackGen field="recipe_name"/>
-                  </p>
-                  <p className="text-sm text-white/80">
-                  <QuickSnackGen field="instructions"/>
-                  </p>
+                  <p className="font-semibold">{snack.snack_name ?? "No snack planned"}</p>
+                  <p className="mt-0.5 text-xs text-white/60">Tap to view recipe</p>
                 </div>
               </div>
-            </article>
+            </button>
           </section>
         </aside>
+
+      {/* ── Snack cook modal ── */}
+      {showSnackModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(6,54,67,0.6)", backdropFilter: "blur(4px)" }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowSnackModal(false); }}
+        >
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+            {/* Header */}
+            <div className="flex items-start justify-between">
+              <div className="pr-4">
+                <h2 className="text-2xl font-extrabold text-[#063643]">
+                  {snack.snack_name ?? "Quick Snack"}
+                </h2>
+                {snack.snack_description && (
+                  <p className="mt-1 text-sm text-[#4b6068]">{snack.snack_description}</p>
+                )}
+              </div>
+              <button
+                onClick={() => setShowSnackModal(false)}
+                className="rounded-full p-1.5 transition-colors hover:bg-gray-100"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Badges */}
+            {(snack.snack_calories != null || prepTimeLabel) && (
+              <div className="mt-4 flex items-center gap-3">
+                {snack.snack_calories != null && (
+                  <div className="flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1.5 text-sm font-semibold text-[#063643]">
+                    <Flame size={14} className="text-orange-400" /> {snack.snack_calories} kcal
+                  </div>
+                )}
+                {prepTimeLabel && (
+                  <div className="flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1.5 text-sm font-semibold text-[#063643]">
+                    <Clock size={14} /> {prepTimeLabel}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Ingredients */}
+            {snack.snack_ingredients && snack.snack_ingredients.length > 0 && (
+              <div className="mt-5">
+                <h3 className="text-sm font-bold text-[#063643]">Ingredients</h3>
+                <ul className="mt-2 space-y-1.5">
+                  {snack.snack_ingredients.map((ing, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-[#334e52]">
+                      <span className="mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full bg-orange-400" />
+                      {ing}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Instructions */}
+            <div className="mt-5">
+              <h3 className="text-sm font-bold text-[#063643]">Instructions</h3>
+              {instructionSteps.length > 0 ? (
+                <ol className="mt-2 space-y-2 text-sm text-[#334e52]">
+                  {instructionSteps.map((step, i) => (
+                    <li key={i} className="leading-relaxed">{step}</li>
+                  ))}
+                </ol>
+              ) : (
+                <p className="mt-2 text-sm text-[#334e52]">No instructions available.</p>
+              )}
+            </div>
+
+            {/* Mark as Eaten — two-step confirmation */}
+            <div className="mt-6">
+              {!confirmEaten ? (
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => setConfirmEaten(true)}
+                    className="flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-white transition-all hover:opacity-90"
+                    style={{ background: "#063643" }}
+                  >
+                    <CheckCircle2 size={16} />
+                    Mark as Eaten
+                  </button>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-orange-200 bg-orange-50 p-4">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-orange-700">
+                    <AlertTriangle size={15} />
+                    This will remove the snack from today&apos;s plan. Are you sure?
+                  </div>
+                  <div className="mt-3 flex items-center gap-3">
+                    <button
+                      onClick={() => setConfirmEaten(false)}
+                      className="flex-1 rounded-full border border-orange-300 py-2 text-xs font-bold text-orange-600 transition hover:bg-orange-100"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleEatenConfirmed}
+                      disabled={deletingSnack}
+                      className="flex-1 rounded-full py-2 text-xs font-bold text-white transition hover:opacity-90 disabled:opacity-60"
+                      style={{ background: "#063643" }}
+                    >
+                      {deletingSnack ? "Removing…" : "Yes, I Ate It!"}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

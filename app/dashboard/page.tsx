@@ -99,7 +99,7 @@ export default function DashboardPage() {
 
             <section>
               <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-3xl font-semibold">Smart Tools</h2>
+                <h2 className="text-3xl font-semibold">Quick Tools</h2>
               </div>
               <SmartTools />
             </section>
