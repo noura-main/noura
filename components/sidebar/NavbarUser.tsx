@@ -21,7 +21,6 @@ const navItems = [
   { label: "My Kitchen", icon: ChefHat, href: "/mykitchen" },
   { label: "Recipes", icon: FileText, href: "/recipes" },
   { label: "Meal Plan", icon: UtensilsCrossed, href: "/mealplan" },
-  { label: "Budget", icon: WalletCards, href: "/budget" },
   { label: "Preferences", icon: Heart, href: "/preferences" },
   { label: "Community", icon: MapPinned, href: "/community" },
 ];
