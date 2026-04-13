@@ -151,8 +151,16 @@ export function UserStatBar() {
                 <UserInfo field="email" />
               </p>
             </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#f2f4f6]">
-              <UserRound className="h-6 w-6 text-[#0d2e38]" />
+            <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[#f2f4f6]">
+              {snack.avatar_url ? (
+                <img
+                  src={snack.avatar_url}
+                  alt="Profile"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <UserRound className="h-6 w-6 text-[#0d2e38]" />
+              )}
             </div>
           </header>
 

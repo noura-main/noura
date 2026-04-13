@@ -6,6 +6,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 interface UserData {
   full_name: string | null;
   email: string | null;
+  avatar_url: string | null;
   calories: number;
   protein: number;
   fat: number;
@@ -29,6 +30,7 @@ interface UserData {
 const defaultData: Omit<UserData, "refresh"> = {
   full_name: null,
   email: null,
+  avatar_url: null,
   calories: 0,
   protein: 0,
   fat: 0,
@@ -77,7 +79,7 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
 
         const profileRes = await supabase
           .from("profiles")
-          .select("full_name")
+          .select("full_name, avatar_url")
           .eq("id", user.id)
           .single();
 
@@ -144,6 +146,7 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
         setData({
           full_name: profileRes.data?.full_name ?? null,
           email: user.email ?? null,
+          avatar_url: profileRes.data?.avatar_url ?? null,
           calories: dailyData?.calories ?? 0,
           protein: dailyData?.protein ?? 0,
           fat: dailyData?.fat_g ?? 0,

@@ -26,32 +26,22 @@ export interface InventoryItem {
   quantity_unit: string;
 }
 
-/**
- * User dietary preferences.
- *
- * TODO: Replace MOCK_USER_PREFERENCES in the API route with a Supabase fetch
- *       once the `user_preferences` table exists. The shape below mirrors the
- *       planned DB schema so the swap is a one-liner.
- *
- * Future Supabase query:
- *   const { data } = await supabase
- *     .from("user_preferences")
- *     .select("diet, allergies, favorite_cuisines, calorie_goal")
- *     .eq("user_id", userId)
- *     .single();
- *   return {
- *     diet: data.diet,
- *     allergies: data.allergies ?? [],
- *     favoriteCuisines: data.favorite_cuisines ?? [],
- *     calorieGoal: data.calorie_goal ?? 2000,
- *   };
- */
+/** Full user dietary preferences — mirrors the `user_preferences` table. */
 export interface UserPreferences {
-  /** e.g. "balanced" | "low-carb" | "vegetarian" | "high-protein" */
-  diet: string;
-  /** e.g. ["nuts", "shellfish", "dairy"] */
+  /** Confirmed food allergies — must NEVER appear in any recipe. */
   allergies: string[];
-  favoriteCuisines: string[];
-  /** Daily calorie target in kcal */
-  calorieGoal: number;
+  /** Active diet labels (e.g. "Vegan", "Keto") — ALL must be honoured. */
+  diets: string[];
+  /** Preferred cuisine styles — only generate recipes from these cuisines (if non-empty). */
+  cuisines: string[];
+  /** If true, allow modern fusion twists; if false, keep recipes traditional. */
+  fusionMode: boolean;
+  /** 0 = Mild, 1 = Gentle, 2 = Medium, 3 = Hot, 4 = Extra Hot */
+  spiceLevel: number;
+  /** Specific ingredients the user refuses — must NEVER appear in any recipe. */
+  noGoItems: string[];
+  /** Kitchen equipment available — only use cooking methods that work with these. */
+  equipment: string[];
+  /** Cooking skill level of the user. */
+  skillLevel: "beginner" | "intermediate" | "advanced";
 }

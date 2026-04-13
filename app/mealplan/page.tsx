@@ -21,7 +21,7 @@ function toCategory(t: DbMealType): MealCardProps["category"] {
 function parseIngredients(raw: unknown): string[] {
   if (!raw) return [];
   // jsonb or text[] — Supabase already deserialised to JS array
-  if (Array.isArray(raw)) return raw.map(String).filter(Boolean);
+  if (Array.isArray(raw)) return raw.map((s) => String(s).trim()).filter(Boolean);
   if (typeof raw !== "string") return [];
   // PostgreSQL array literal: {item1,"item 2",item3}
   if (raw.startsWith("{") && raw.endsWith("}")) {
@@ -136,9 +136,9 @@ export default function MealPlanPage() {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-8 md:grid-cols-3 md:gap-16 lg:gap-20 justify-items-center items-stretch">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-3 items-stretch">
                 {meals.map((meal) => (
-                  <div key={meal.category} className="w-full max-w-[420px] px-2 h-full">
+                  <div key={meal.category} className="w-full h-full">
                     <MealCard
                       {...meal}
                       onMarkEaten={async () => {

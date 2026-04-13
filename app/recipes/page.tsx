@@ -10,7 +10,7 @@ import TrendingCategories, {
 } from "@/components/recipes/TrendingCategories";
 import GenerateButton from "@/components/recipes/GenerateButton";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import type { GeneratedRecipes, InventoryItem } from "@/lib/recipes/types";
+import type { GeneratedRecipes, InventoryItem, UserPreferences } from "@/lib/recipes/types";
 
 export default function RecipesPage() {
   const [activeTrends, setActiveTrends] = useState<string[]>(["quick"]);
@@ -53,8 +53,9 @@ export default function RecipesPage() {
     setIsGenerating(true);
     setError(null);
 
-    // 1. Fetch user inventory from Supabase (failure is non-fatal)
+    // 1. Fetch user inventory + preferences from Supabase (failures are non-fatal)
     let inventory: InventoryItem[] = [];
+    let preferences: UserPreferences | null = null;
     try {
       const supabase = getSupabaseBrowserClient();
       if (supabase) {
@@ -62,15 +63,35 @@ export default function RecipesPage() {
           data: { user },
         } = await supabase.auth.getUser();
         if (user) {
-          const { data } = await supabase
-            .from("user_ingredients")
-            .select("name, quantity, quantity_unit")
-            .eq("user_id", user.id);
-          inventory = (data ?? []) as InventoryItem[];
+          const [inventoryRes, prefsRes] = await Promise.all([
+            supabase
+              .from("user_ingredients")
+              .select("name, quantity, quantity_unit")
+              .eq("user_id", user.id),
+            supabase
+              .from("user_preferences")
+              .select("allergies,diets,cuisines,fusion_mode,spice_level,no_go_items,equipment,skill_level")
+              .eq("user_id", user.id)
+              .maybeSingle(),
+          ]);
+          inventory = (inventoryRes.data ?? []) as InventoryItem[];
+          if (prefsRes.data) {
+            const p = prefsRes.data;
+            preferences = {
+              allergies:  p.allergies  ?? [],
+              diets:      p.diets      ?? [],
+              cuisines:   p.cuisines   ?? [],
+              fusionMode: p.fusion_mode ?? false,
+              spiceLevel: p.spice_level ?? 2,
+              noGoItems:  p.no_go_items ?? [],
+              equipment:  p.equipment  ?? [],
+              skillLevel: p.skill_level ?? "intermediate",
+            };
+          }
         }
       }
     } catch {
-      // Continue without inventory — AI will use pantry staples
+      // Continue without inventory/preferences — AI will use defaults
     }
 
     // 2. Resolve human-readable labels for active trend chips (allow multiple)
@@ -84,7 +105,7 @@ export default function RecipesPage() {
       const res = await fetch("/api/recipes/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ inventory, activeTrend: trendLabel }),
+        body: JSON.stringify({ inventory, activeTrend: trendLabel, preferences }),
       });
 
       if (!res.ok) {

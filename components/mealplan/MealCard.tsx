@@ -161,7 +161,7 @@ export default function MealCard({
               style={{ color: "rgba(255,255,255,0.82)" }}
             >
               <span className="mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full bg-orange-400" />
-              {ing}
+              {ing.trim()}
             </li>
           ))}
         </ul>
@@ -258,9 +258,9 @@ export default function MealCard({
                 });
                 return (
                   <li key={i}>
-                    <div>{ing}</div>
+                    {ing.trim()}
                     {matched.length > 0 && (
-                      <div className="mt-1 text-xs text-[#647d7f]">Substitution: {matched.map(cleanSub).join("; ")}</div>
+                      <span className="ml-2 text-xs text-[#647d7f]">(Sub: {matched.map(cleanSub).join("; ")})</span>
                     )}
                   </li>
                 );

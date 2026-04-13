@@ -29,7 +29,7 @@ export default function WeeklyCalendar({ selectedOffset, onSelect }: Props) {
           <button
             key={offset}
             onClick={() => onSelect(offset)}
-            className="flex min-w-[72px] flex-1 flex-col items-center justify-center rounded-2xl border py-5 transition-all duration-200 hover:shadow-md focus:outline-none"
+            className="flex min-w-[72px] flex-1 flex-col items-center justify-center rounded-2xl border py-3 transition-all duration-200 hover:shadow-md focus:outline-none"
             style={{
               background: isActive ? "#063643" : "#ffffff",
               borderColor: isActive ? "#063643" : "rgba(6,54,67,0.14)",
@@ -37,9 +37,6 @@ export default function WeeklyCalendar({ selectedOffset, onSelect }: Props) {
             }}
           >
             <span className="text-xs font-bold tracking-widest">{getDayLabel(offset)}</span>
-            {isActive && (
-              <span className="mt-2 h-1.5 w-1.5 rounded-full bg-white opacity-70" />
-            )}
           </button>
         );
       })}

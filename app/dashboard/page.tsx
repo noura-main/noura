@@ -1,3 +1,6 @@
+"use client"
+import { useRouter } from "next/navigation";
+
 import { NavbarUser } from "@/components/sidebar/NavbarUser";
 import { UserStatBar } from "@/components/sidebar/UserStatBar";
 
@@ -22,23 +25,9 @@ import NearbyFoodMapLoader from "@/components/dashboard/NearbyFoodMapLoader";
 import { SmartTools } from "@/components/dashboard/SmartTools";
 import FallbackImage from "@/components/ui/FallbackImage";
 
-const navItems = [
-  { label: "Dashboard", icon: SquareChartGantt, active: true },
-  { label: "My Kitchen", icon: ChefHat },
-  { label: "Recipes", icon: FileText },
-  { label: "Meal Plan", icon: UtensilsCrossed },
-  { label: "Budget", icon: WalletCards },
-  { label: "Preferences", icon: Heart },
-  { label: "Community", icon: MapPinned },
-];
-
-const meals = [
-  { label: "Breakfast", detail: "breakfast", icon: Wheat },
-  { label: "Lunch", detail: "lunch", icon: Salad },
-  { label: "Dinner", detail: "dinner", icon: Soup },
-];
-
 export default function DashboardPage() {
+  const router = useRouter();
+  
   return (
     <div className="h-screen bg-[#f3f4f6] p-3 text-[#0d2e38]">
       <div className="mx-auto grid h-full max-w-[1500px] grid-cols-1 gap-2 lg:grid-cols-[220px_minmax(0,1fr)_300px]">
@@ -46,23 +35,6 @@ export default function DashboardPage() {
 
         <main className="h-full overflow-y-auto rounded-3xl bg-[#eceef0] p-6 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           <div className="space-y-6">
-            <section className="flex items-center gap-3">
-              <div className="relative flex-1">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6a7f87]" />
-                <input
-                  type="text"
-                  placeholder="Search ingredients, recipes..."
-                  className="w-full rounded-2xl border border-[#d8dee2] bg-white py-3 pl-10 pr-4 text-sm outline-none focus:border-[#0d2e38]/30"
-                />
-              </div>
-              <button
-                type="button"
-                className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[#0d2e38] text-white"
-              >
-                <Settings className="h-5 w-5" />
-              </button>
-            </section>
-
             <section className="grid gap-4 rounded-3xl bg-[#063643] p-7 text-white md:grid-cols-[1.1fr_0.9fr]">
               <div>
                 <h1 className="max-w-md text-5xl font-semibold leading-tight tracking-wide">
@@ -72,12 +44,14 @@ export default function DashboardPage() {
                 </h1>
                 <div className="mt-5 flex flex-wrap gap-3">
                   <button
+                    onClick={() => router.push('/mealplan')}
                     type="button"
                     className="rounded-full bg-white px-5 py-2 text-sm font-semibold text-[#0b4a5d] hover:cursor-pointer"
                   >
                     Generate Meals
                   </button>
                   <button
+                    onClick={() => router.push('/recipes')}
                     type="button"
                     className="rounded-full border border-white/70 px-5 py-2 text-sm font-semibold text-white hover:cursor-pointer"
                   >

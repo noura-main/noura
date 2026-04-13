@@ -11,20 +11,12 @@ const PRIMARY_MODEL = "llama-3.3-70b-versatile";
 const FALLBACK_MODEL = "llama-3.1-8b-instant";
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 
-// ── Mock User Preferences ─────────────────────────────────────────────────────
-// TODO: Replace with a Supabase fetch when the `user_preferences` table exists.
-//       See lib/recipes/types.ts for the full swap instructions.
-const MOCK_USER_PREFERENCES: UserPreferences = {
-  diet: "balanced",
-  allergies: [],
-  favoriteCuisines: ["Mediterranean", "Asian", "Mexican"],
-  calorieGoal: 2000,
-};
-// ──────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface GenerateRequest {
   inventory: InventoryItem[];
   activeTrend: string;
+  preferences: UserPreferences | null;
 }
 
 interface RawRecipe {
@@ -42,7 +34,7 @@ interface RawRecipe {
 
 type RawGenerated = Record<MealType, RawRecipe[]>;
 
-// Fallback images per meal type (used when Pixabay fails or key is absent)
+// Fallback images per meal type
 const FALLBACK_IMAGES: Record<MealType, string> = {
   breakfast:
     "https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=480&h=480&fit=crop&auto=format",
@@ -54,42 +46,36 @@ const FALLBACK_IMAGES: Record<MealType, string> = {
     "https://images.unsplash.com/photo-1559181567-c3190bfbce97?w=480&h=480&fit=crop&auto=format",
 };
 
-// ── Pixabay image helper ──────────────────────────────────────────────────────
-async function fetchPixabayImage(
+// ── Unsplash image helper ─────────────────────────────────────────────────────
+async function fetchUnsplashImage(
   query: string,
-  apiKey: string,
+  accessKey: string,
   fallback: string
 ): Promise<string> {
   try {
-    const url = new URL("https://pixabay.com/api/");
-    url.searchParams.set("key", apiKey);
-    url.searchParams.set("q", query);
-    url.searchParams.set("image_type", "photo");
-    url.searchParams.set("category", "food");
-    url.searchParams.set("safesearch", "true");
-    url.searchParams.set("per_page", "6");
+    const url = new URL("https://api.unsplash.com/search/photos");
+    url.searchParams.set("query", `${query} food`);
+    url.searchParams.set("per_page", "10");
+    url.searchParams.set("orientation", "squarish");
+    url.searchParams.set("content_filter", "high");
 
-    const res = await fetch(url.toString());
+    const res = await fetch(url.toString(), {
+      headers: { Authorization: `Client-ID ${accessKey}` },
+    });
     if (!res.ok) return fallback;
     const data = await res.json();
-    const hits = data.hits ?? [];
-    if (!hits.length) return fallback;
+    const results = data.results ?? [];
+    if (!results.length) return fallback;
 
-    // Try to pick an image whose tags match tokens from the query (reduce generic stock images)
-    const tokens = (query || "")
-      .toLowerCase()
-      .split(/[^a-z0-9]+/)
-      .filter((t: string) => t && t.length > 2);
-
-    for (const hit of hits) {
-      const tags = (hit.tags as string | undefined)?.toLowerCase() ?? "";
-      for (const tk of tokens) {
-        if (tags.includes(tk)) return hit.webformatURL as string;
+    // Prefer results whose alt/description contains query tokens
+    const tokens = query.toLowerCase().split(/[^a-z0-9]+/).filter((t: string) => t.length > 2);
+    for (const r of results) {
+      const desc = ((r.alt_description ?? "") + " " + (r.description ?? "")).toLowerCase();
+      if (tokens.some((t: string) => desc.includes(t))) {
+        return (r.urls?.regular ?? r.urls?.small ?? fallback) as string;
       }
     }
-
-    // Fallback: return first hit
-    return (hits[0].webformatURL as string) ?? fallback;
+    return (results[0].urls?.regular ?? results[0].urls?.small ?? fallback) as string;
   } catch {
     return fallback;
   }
@@ -107,60 +93,100 @@ function sanitizeDishName(name: string): string {
 }
 
 // ── Prompt builder ────────────────────────────────────────────────────────────
+const SPICE_LABELS = ["Mild (no heat at all)", "Gentle (a hint of warmth)", "Medium (moderate heat)", "Hot (clearly spicy)", "Extra Hot (very intense heat)"];
+
 function buildPrompt(
   inventory: InventoryItem[],
-  preferences: UserPreferences,
-  activeTrend: string
+  preferences: UserPreferences | null,
+  activeTrend: string,
+  mealTypes: MealType[] = ["breakfast", "lunch", "dinner", "snacks"]
 ): string {
   const inventoryList =
     inventory.length > 0
       ? inventory.map((i) => `${i.name} (${i.quantity} ${i.quantity_unit})`).join(", ")
       : "No inventory provided — use common pantry staples";
 
-  return `You are a professional nutritionist and chef for Noura, a health-focused food app.
+  // ── HARD rules (only allergies + diets) ──────────────────────────────────
+  const forbidden = preferences?.allergies ?? [];
+  const activeDiets = preferences?.diets ?? [];
 
-TASK: Generate exactly 5 recipes for EACH of these 4 meal types: breakfast, lunch, dinner, snacks (20 recipes total). You MUST produce exactly 5 snack recipes — not 1, not 3, exactly 5.
+  const forbiddenLine = forbidden.length
+    ? `NEVER use these allergens (under any name or alias): ${forbidden.join(", ")}`
+    : "No allergen restrictions.";
 
-RULES:
-1. Use primarily the provided kitchen inventory.
-2. If a needed ingredient is absent, suggest a healthy substitute in parentheses within the description. Example: "...topped with Greek yogurt (sub for sour cream)..."
-3. Relate each recipe to the trending focus tag below.
-4. Strictly honour the dietary preferences.
-5. Keep descriptions to 2-3 sentences — describe the dish, its flavour profile, and why it fits the user's goals.
-6. The 'name' field MUST be a single concise dish name ONLY. Do NOT include substitutions, parenthetical notes, ingredient lists, or any explanatory text in the 'name' — put substitutions or alternatives in the 'description' field only. Example valid name: "Shakshuka". Invalid: "Shakshuka (use yogurt if no feta)".
-7. Calories must be a single integer representing one serving.
+  const dietLine = activeDiets.length
+    ? `All recipes MUST comply with: ${activeDiets.join(", ")}`
+    : "No diet restrictions.";
+
+  // ── SOFT preferences (best-effort, NEVER reduce count) ────────────────────
+  const softLines: string[] = [];
+  const noGoItems = preferences?.noGoItems ?? [];
+  if (noGoItems.length) softLines.push(`Avoid if possible (personal dislikes, not allergies): ${noGoItems.join(", ")}`);
+  const cuisines = preferences?.cuisines ?? [];
+  if (cuisines.length) softLines.push(`Preferred cuisines: ${cuisines.join(", ")}`);
+  softLines.push(`Preferred spice level: ${SPICE_LABELS[preferences?.spiceLevel ?? 2]}`);
+  const equipment = preferences?.equipment ?? [];
+  if (equipment.length) softLines.push(`Available equipment: ${equipment.join(", ")}`);
+  softLines.push(`Skill level: ${preferences?.skillLevel ?? "intermediate"}`);
+  softLines.push(preferences?.fusionMode ? "Style: Modern Fusion encouraged" : "Style: Authentic Traditional preferred");
+
+  const mealTypesList = mealTypes.join(", ");
+  const jsonKeys = mealTypes.map((m) => `  "${m}": [ ...exactly 10 items ]`).join(",\n");
+
+  return `You are a professional nutritionist and chef for Noura, a health-focused meal planning app.
+
+TASK: Generate exactly 10 recipes for EACH of these meal types: ${mealTypesList}.
+You MUST always produce exactly 10 unique recipes per meal type. NEVER produce fewer than 10.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HARD REQUIREMENTS (never violate, no exceptions):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. ${forbiddenLine}
+2. ${dietLine}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SOFT PREFERENCES (follow where practical — do NOT reduce count to satisfy these):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${softLines.map((l, i) => `${i + 1}. ${l}`).join("\n")}
+
+GENERAL RULES:
+- Use primarily the kitchen inventory; if an ingredient is missing, suggest a substitute in parentheses in description only.
+- Relate each recipe to the trending focus.
+- The 'name' field: a single concise dish name only — no notes or parentheses.
+- Descriptions: 1-2 sentences covering the dish and its flavour.
+- Calories: single integer per serving.
 
 KITCHEN INVENTORY:
 ${inventoryList}
 
-USER PREFERENCES:
-- Diet: ${preferences.diet}
-- Allergies / Restrictions: ${preferences.allergies.length ? preferences.allergies.join(", ") : "none"}
-- Favourite cuisines: ${preferences.favoriteCuisines.join(", ")}
-- Daily calorie goal: ${preferences.calorieGoal} kcal
-
 TRENDING FOCUS: ${activeTrend}
 
-Return ONLY a valid JSON object — no markdown, no explanation — in exactly this format:
+Return ONLY a valid JSON object — no markdown, no explanation:
 {
-  "breakfast": [
-    { "name": "Recipe Name", "description": "2-3 sentence description of the dish, its flavour, and health benefits.", "calories": 420, "prepTime": 20, "imageQuery": "food query", "ingredients": ["2 large eggs", "1 cup spinach", "1 tbsp olive oil", "1/2 tsp salt", "1/4 tsp black pepper"], "instructions": "Step 1: Heat olive oil in a pan over medium heat until shimmering.\nStep 2: Add spinach and sauté, stirring frequently, for 2 minutes until wilted.\nStep 3: Create a small well in the centre, crack in the eggs, and season with salt and pepper.\nStep 4: Cover the pan and cook for 3-4 minutes until the whites are fully set but yolks remain runny. Serve immediately with crusty bread.", "protein_g": 18, "fat_g": 28, "carbs_g": 3 }
-  ],
-  "lunch": [ ...5 items ],
-  "dinner": [ ...5 items ],
-  "snacks": [ ...exactly 5 items, same shape as above ]
+${jsonKeys}
 }
 
-RULES FOR FIELDS:
-- 'description': 1-2 sentences covering what the dish and its flavour profile (optional: you can add its nutritional benefit if needed).
-- 'ingredients': Each entry MUST include measurement + ingredient, e.g. "200g chicken breast", "1 cup basmati rice", "2 tbsp soy sauce". Never list an ingredient without a quantity.
-- 'prepTime': Integer, total minutes from start to plate (includes both prep and cook time).
-- 'calories': Integer, total kcal for one serving.
-- 'instructions': Detailed, numbered step-by-step method. Each step MUST be on its own line, prefixed with its number (e.g. "Step 1: ...\nStep 2: ...\nStep 3: ..."). Each step should be a full sentence explaining exactly what to do, including temperatures, timings, and technique. Minimum 4 steps for all meal types including snacks. Never put all steps on one line.
-- 'protein_g', 'fat_g', 'carbs_g': Integers representing grams of each macronutrient per single serving. Provide reasonable estimates that sum approximately to the calories reported (not required to be perfectly exact, but avoid clearly impossible values).`;
+Each item shape:
+{ "name": "Recipe Name", "description": "Short description.", "calories": 420, "prepTime": 20, "imageQuery": "food photo query", "ingredients": ["2 large eggs", "1 cup spinach"], "instructions": "Step 1: ...\\nStep 2: ...\\nStep 3: ...\\nStep 4: ...", "protein_g": 18, "fat_g": 12, "carbs_g": 30 }
+
+FIELD RULES:
+- 'ingredients': measurement + ingredient every entry.
+- 'prepTime': total minutes start to plate (integer).
+- 'instructions': minimum 4 numbered steps on separate lines.
+- 'protein_g', 'fat_g', 'carbs_g': integer grams per serving.`;
 }
 
 // ── Groq API caller ───────────────────────────────────────────────────────────
+// Per-call max_tokens budget.
+// Each call requests 10 recipes for ONE meal type.
+// ~200 tokens/recipe × 10 = ~2000 output tokens needed.
+// llama-3.3-70b-versatile TPM: ~unlimited; llama-3.1-8b-instant TPM: 6000.
+// Keep total (prompt ~600 + max_tokens) under 6000 for the fallback.
+const MAX_TOKENS: Record<string, number> = {
+  [PRIMARY_MODEL]: 5000,
+  [FALLBACK_MODEL]: 4000,
+};
+
 async function callGroq(prompt: string, model: string): Promise<Response> {
   const apiKey = process.env.NEXT_PUBLIC_GROK_API_KEY;
   if (!apiKey) throw new Error("NEXT_PUBLIC_GROK_API_KEY is not configured");
@@ -182,7 +208,7 @@ async function callGroq(prompt: string, model: string): Promise<Response> {
         { role: "user", content: prompt },
       ],
       temperature: 0.75,
-      max_tokens: 8192,
+      max_tokens: MAX_TOKENS[model] ?? 7500,
       response_format: { type: "json_object" },
     }),
   });
@@ -191,7 +217,7 @@ async function callGroq(prompt: string, model: string): Promise<Response> {
 // ── Response parser + image enrichment ───────────────────────────────────────
 async function parseAndEnrichRecipes(
   rawJson: string,
-  pixabayKey: string | undefined
+  unsplashKey: string | undefined
 ): Promise<GeneratedRecipes> {
   const parsed: RawGenerated = JSON.parse(rawJson);
   const mealTypes: MealType[] = ["breakfast", "lunch", "dinner", "snacks"];
@@ -201,15 +227,15 @@ async function parseAndEnrichRecipes(
   const recipeOrder: { meal: MealType; idx: number }[] = [];
 
   for (const meal of mealTypes) {
-    const list = (parsed[meal] ?? []).slice(0, 5);
+    const list = (parsed[meal] ?? []).slice(0, 10);
     list.forEach((r, idx) => {
       // Ensure the recipe `name` is strictly a dish name (no substitutions in the name)
       r.name = sanitizeDishName(String(r.name ?? ""));
 
       recipeOrder.push({ meal, idx });
       imageFetches.push(
-        pixabayKey
-          ? fetchPixabayImage(String(r.name || r.imageQuery || ""), pixabayKey, FALLBACK_IMAGES[meal])
+        unsplashKey
+          ? fetchUnsplashImage(String(r.name || r.imageQuery || ""), unsplashKey, FALLBACK_IMAGES[meal])
           : Promise.resolve(FALLBACK_IMAGES[meal])
       );
     });
@@ -222,7 +248,7 @@ async function parseAndEnrichRecipes(
 
   let globalIdx = 0;
   for (const meal of mealTypes) {
-    const list = (parsed[meal] ?? []).slice(0, 5);
+    const list = (parsed[meal] ?? []).slice(0, 10);
     result[meal] = list.map((r, i) => {
       const settled = imageResults[globalIdx++];
       return {
@@ -248,7 +274,7 @@ async function parseAndEnrichRecipes(
 export async function POST(req: NextRequest) {
   try {
     const body: GenerateRequest = await req.json();
-    const { inventory, activeTrend } = body;
+    const { inventory, activeTrend, preferences } = body;
 
     if (!activeTrend) {
       return NextResponse.json(
@@ -257,33 +283,53 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const prompt = buildPrompt(inventory ?? [], MOCK_USER_PREFERENCES, activeTrend);
+    // ── Four parallel calls — one per meal type ──────────────────────────
+    // Splitting keeps each request small enough for both primary and fallback
+    // models (total tokens well under the 6 000 TPM limit on llama-3.1-8b).
+    const mealTypes: MealType[] = ["breakfast", "lunch", "dinner", "snacks"];
 
-    // Try primary model; auto-fallback to smaller model on rate-limit (429)
-    let res = await callGroq(prompt, PRIMARY_MODEL);
-    if (res.status === 429) {
-      console.warn("[generate] Rate-limited on primary model — falling back to", FALLBACK_MODEL);
-      res = await callGroq(prompt, FALLBACK_MODEL);
+    async function runCall(prompt: string, label: string): Promise<string> {
+      let res = await callGroq(prompt, PRIMARY_MODEL);
+      if (res.status === 429 || res.status === 413) {
+        console.warn(`[generate:${label}] ${res.status} on primary — falling back to`, FALLBACK_MODEL);
+        res = await callGroq(prompt, FALLBACK_MODEL);
+      }
+      if (!res.ok) {
+        const errBody = await res.text();
+        console.error(`[generate:${label}] Groq error`, res.status, errBody);
+        let friendlyMsg: string;
+        try { friendlyMsg = (JSON.parse(errBody) as { error?: { message?: string } })?.error?.message ?? errBody; }
+        catch { friendlyMsg = errBody; }
+        throw new Error(`AI service error (${res.status}): ${friendlyMsg}`);
+      }
+      const data = await res.json();
+      return data.choices?.[0]?.message?.content ?? "{}";
     }
 
-    if (!res.ok) {
-      const errBody = await res.text();
-      console.error("[generate] Groq API error", res.status, errBody);
-      return NextResponse.json(
-        { error: `AI service error (${res.status})` },
-        { status: 502 }
-      );
-    }
+    const inv = inventory ?? [];
+    const prefs = preferences ?? null;
+    const contents = await Promise.all(
+      mealTypes.map((m) =>
+        runCall(buildPrompt(inv, prefs, activeTrend, [m]), m)
+      )
+    );
 
-    const data = await res.json();
-    const content: string = data.choices?.[0]?.message?.content ?? "{}";
+    const unsplashKey = (process.env.UNSPLASH_ACCESS_KEY ?? process.env.NEXT_PUBLIC_UNSPLASH_ACCESS_KEY)?.trim();
+    const enriched = await Promise.all(
+      contents.map((c) => parseAndEnrichRecipes(c, unsplashKey))
+    );
 
-    const pixabayKey = process.env.NEXT_PUBLIC_PIXABAY_API_KEY;
-    const recipes = await parseAndEnrichRecipes(content, pixabayKey);
+    const recipes: GeneratedRecipes = {
+      breakfast: enriched[0].breakfast,
+      lunch:     enriched[1].lunch,
+      dinner:    enriched[2].dinner,
+      snacks:    enriched[3].snacks,
+    };
 
     return NextResponse.json({ recipes });
   } catch (err) {
+    const message = err instanceof Error ? err.message : "Internal server error";
     console.error("[generate] unexpected error", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
