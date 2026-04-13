@@ -4,6 +4,9 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useUserData } from "@/lib/context/user-data";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import FallbackImage from "@/components/ui/FallbackImage";
+import HealthTrendsModal from "@/components/dashboard/HealthTrendsModal";
+import IngredientSwapModal from "@/components/recipes/IngredientSwapModal";
+import { Target, X } from "lucide-react";
 
 function SavedTimestamp({ ts }: { ts: number }) {
   const diff = Date.now() - ts;
@@ -235,204 +238,241 @@ export function SmartTools() {
         })}
       </div>
 
-      {openTool ? (
+      {openTool === "Health Insight" ? (
+        <HealthTrendsModal onClose={() => setOpenTool(null)} />
+      ) : openTool === "Smart Swaps" ? (
+        <IngredientSwapModal onClose={() => setOpenTool(null)} />
+      ) : openTool ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(6,54,67,0.65)", backdropFilter: "blur(6px)" }}
           onClick={(event) => {
             if (event.target === event.currentTarget) setOpenTool(null);
           }}
           role="presentation"
         >
           <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={titleId}
-            className="w-full max-w-lg rounded-3xl bg-white p-6 text-[#0d2e38] shadow-xl"
+            className="w-full max-w-xl overflow-hidden rounded-3xl shadow-2xl"
+            style={{
+              background: "rgba(255,255,255,0.96)",
+              border: "1px solid rgba(61,132,137,0.18)",
+            }}
           >
-            <div className="flex items-start justify-between gap-4">
+            {/* Header */}
+            <div
+              className="relative flex items-center justify-between px-6 py-5"
+              style={{ background: "#0D2D35" }}
+            >
               <div>
-                <p className="text-sm font-semibold uppercase tracking-wide text-[#6a7f87]">
-                  Smart Tool
-                </p>
-                <h3 id={titleId} className="mt-1 text-2xl font-semibold">
+                <div className="flex items-center gap-2">
+                  {openTool === "Goal Tracker" && (
+                    <div
+                      className="flex h-7 w-7 items-center justify-center rounded-xl"
+                      style={{ background: "rgba(61,132,137,0.20)" }}
+                    >
+                      <Target size={16} style={{ color: "#3D8489" }} />
+                    </div>
+                  )}
+                  <span
+                    className="text-[10px] font-black tracking-[0.22em]"
+                    style={{ color: "rgba(255,255,255,0.45)" }}
+                  >
+                    {openTool === "Goal Tracker" ? "NUTRITION TARGETS" : "SMART TOOL"}
+                  </span>
+                </div>
+                <h2 className="mt-0.5 text-2xl font-bold text-white">
                   {openTool}
-                </h3>
+                </h2>
               </div>
               <button
-                ref={closeButtonRef}
-                type="button"
                 onClick={() => setOpenTool(null)}
-                className="rounded-full bg-[#0d2e38] px-4 py-2 text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0b4a5d]/40 focus-visible:ring-offset-2"
+                className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-white/15"
+                style={{ color: "rgba(255,255,255,0.60)" }}
+                aria-label="Close"
               >
-                Close
+                <X size={16} />
               </button>
             </div>
 
-            {openTool === "Goal Tracker" ? (
-              <div className="mt-4">
-                <p className="text-sm leading-7 text-[#35515B]">
-                  Set your daily <span className="font-semibold">nutritional targets</span>. These targets are saved locally and to your account when signed in.
+            {/* Scrollable body */}
+            <div className="max-h-[75vh] overflow-y-auto p-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {openTool === "Goal Tracker" ? (
+                <div>
+                  <p
+                    className="mb-4 text-sm leading-relaxed"
+                    style={{ color: "rgba(13,45,53,0.65)" }}
+                  >
+                    Set your daily nutritional targets. These are saved locally and synced to your account when signed in.
+                  </p>
+
+                  {/* Input cards grid */}
+                  <div className="grid grid-cols-2 gap-4">
+                    {[
+                      { label: "Calories", key: "calories", placeholder: "e.g. 2000", unit: "kcal" },
+                      { label: "Protein", key: "protein_g", placeholder: "e.g. 75", unit: "g" },
+                      { label: "Carbs", key: "carbs_g", placeholder: "e.g. 250", unit: "g" },
+                      { label: "Fat", key: "fat_g", placeholder: "e.g. 70", unit: "g" },
+                    ].map(({ label, key, placeholder, unit }) => (
+                      <div key={key}>
+                        <label
+                          className="mb-1.5 block text-xs font-bold"
+                          style={{ color: "rgba(13,45,53,0.50)" }}
+                        >
+                          {label} ({unit})
+                        </label>
+                        <input
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          value={(nutritionGoals as any)[key] ?? ""}
+                          onChange={(e) => {
+                            hasUserEditedGoals.current = true;
+                            const v = e.target.value === "" ? null : Number(e.target.value);
+                            setNutritionGoals((p: any) => ({ ...p, [key]: v }));
+                          }}
+                          placeholder={placeholder}
+                          className="w-full rounded-xl px-3 py-2 text-sm outline-none transition-all"
+                          style={{
+                            background: "rgba(13,45,53,0.04)",
+                            border: "1.5px solid rgba(61,132,137,0.18)",
+                            color: "#0D2D35",
+                          }}
+                          onFocus={(e) => (e.currentTarget.style.borderColor = "#3D8489")}
+                          onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(61,132,137,0.18)")}
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Progress cards */}
+                  <div className="mt-6 grid grid-cols-2 gap-4">
+                    {nutritionGoals.calories != null && (
+                      <div
+                        className="rounded-2xl p-4"
+                        style={{
+                          background: "linear-gradient(135deg,rgba(249,115,22,0.10),rgba(249,115,22,0.04))",
+                          border: "1px solid rgba(249,115,22,0.20)",
+                        }}
+                      >
+                        <p className="text-[10px] font-bold tracking-wide" style={{ color: "rgba(13,45,53,0.40)" }}>
+                          CALORIES
+                        </p>
+                        <ProgressPie
+                          label=""
+                          value={userData?.calories ?? 0}
+                          goal={nutritionGoals.calories}
+                          color="#f97316"
+                        />
+                      </div>
+                    )}
+                    {nutritionGoals.protein_g != null && (
+                      <div
+                        className="rounded-2xl p-4"
+                        style={{
+                          background: "linear-gradient(135deg,rgba(16,185,129,0.10),rgba(16,185,129,0.04))",
+                          border: "1px solid rgba(16,185,129,0.20)",
+                        }}
+                      >
+                        <p className="text-[10px] font-bold tracking-wide" style={{ color: "rgba(13,45,53,0.40)" }}>
+                          PROTEIN
+                        </p>
+                        <ProgressPie
+                          label=""
+                          value={userData?.protein ?? 0}
+                          goal={nutritionGoals.protein_g}
+                          color="#10b981"
+                        />
+                      </div>
+                    )}
+                    {nutritionGoals.carbs_g != null && (
+                      <div
+                        className="rounded-2xl p-4"
+                        style={{
+                          background: "linear-gradient(135deg,rgba(59,130,246,0.10),rgba(59,130,246,0.04))",
+                          border: "1px solid rgba(59,130,246,0.20)",
+                        }}
+                      >
+                        <p className="text-[10px] font-bold tracking-wide" style={{ color: "rgba(13,45,53,0.40)" }}>
+                          CARBS
+                        </p>
+                        <ProgressPie
+                          label=""
+                          value={userData?.carbs ?? 0}
+                          goal={nutritionGoals.carbs_g}
+                          color="#3b82f6"
+                        />
+                      </div>
+                    )}
+                    {nutritionGoals.fat_g != null && (
+                      <div
+                        className="rounded-2xl p-4"
+                        style={{
+                          background: "linear-gradient(135deg,rgba(239,68,68,0.10),rgba(239,68,68,0.04))",
+                          border: "1px solid rgba(239,68,68,0.20)",
+                        }}
+                      >
+                        <p className="text-[10px] font-bold tracking-wide" style={{ color: "rgba(13,45,53,0.40)" }}>
+                          FAT
+                        </p>
+                        <ProgressPie
+                          label=""
+                          value={userData?.fat ?? 0}
+                          goal={nutritionGoals.fat_g}
+                          color="#ef4444"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Save status and buttons */}
+                  <div className="mt-6 flex items-center justify-between border-t" style={{ borderColor: "rgba(61,132,137,0.14)" }}>
+                    <p className="pt-4 text-[11px]" style={{ color: "rgba(13,45,53,0.35)" }}>
+                      {savedAt ? <SavedTimestamp ts={savedAt} /> : "Saved locally"}
+                    </p>
+                    <div className="flex gap-2 pt-4">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          setNutritionGoals({ calories: null, protein_g: null, carbs_g: null, fat_g: null });
+                          try { await saveNutritionGoals(); } catch {}
+                        }}
+                        className="rounded-full border-2 px-4 py-1.5 text-xs font-bold transition-all hover:bg-[#0D2D35] hover:text-white"
+                        style={{ borderColor: "#0D2D35", color: "#0D2D35" }}
+                      >
+                        Clear
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async () => { setSaveStatus('saving'); await saveNutritionGoals(); }}
+                        className="rounded-full border-2 px-4 py-1.5 text-xs font-bold transition-all hover:bg-[#0D2D35] hover:text-white"
+                        style={{ borderColor: "#0D2D35", color: "#0D2D35" }}
+                      >
+                        {saveStatus === 'saving' ? 'Saving…' : 'Save'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const reset = { calories: null, protein_g: null, carbs_g: null, fat_g: null };
+                          setNutritionGoals(reset);
+                          try {
+                            localStorage.removeItem(NUTRI_GOALS_KEY);
+                            setSavedAt(Date.now());
+                          } catch {}
+                        }}
+                        className="rounded-full px-4 py-1.5 text-xs font-bold text-white transition-all hover:opacity-90"
+                        style={{ background: "#0D2D35" }}
+                      >
+                        Reset
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm leading-relaxed" style={{ color: "rgba(13,45,53,0.55)" }}>
+                  This is a placeholder modal for <span className="font-semibold">{openTool}</span>.
+                  We can wire this up to the real tool flow next.
                 </p>
-
-                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <label className="flex flex-col">
-                    <span className="text-xs text-[#6a7f87]">Calories (kcal)</span>
-                    <input
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      value={nutritionGoals.calories ?? ""}
-                      onChange={(e) => {
-                        hasUserEditedGoals.current = true;
-                        const v = e.target.value === "" ? null : Number(e.target.value);
-                        setNutritionGoals((p) => ({ ...p, calories: v }));
-                      }}
-                      placeholder="e.g. 2000"
-                      className="mt-1 rounded-lg border border-[#e6eef0] px-3 py-2 text-sm outline-none"
-                    />
-                  </label>
-
-                  <label className="flex flex-col">
-                    <span className="text-xs text-[#6a7f87]">Protein (g)</span>
-                    <input
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      value={nutritionGoals.protein_g ?? ""}
-                      onChange={(e) => {
-                        hasUserEditedGoals.current = true;
-                        const v = e.target.value === "" ? null : Number(e.target.value);
-                        setNutritionGoals((p) => ({ ...p, protein_g: v }));
-                      }}
-                      placeholder="e.g. 75"
-                      className="mt-1 rounded-lg border border-[#e6eef0] px-3 py-2 text-sm outline-none"
-                    />
-                  </label>
-
-                  <label className="flex flex-col">
-                    <span className="text-xs text-[#6a7f87]">Carbs (g)</span>
-                    <input
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      value={nutritionGoals.carbs_g ?? ""}
-                      onChange={(e) => {
-                        hasUserEditedGoals.current = true;
-                        const v = e.target.value === "" ? null : Number(e.target.value);
-                        setNutritionGoals((p) => ({ ...p, carbs_g: v }));
-                      }}
-                      placeholder="e.g. 250"
-                      className="mt-1 rounded-lg border border-[#e6eef0] px-3 py-2 text-sm outline-none"
-                    />
-                  </label>
-
-                  <label className="flex flex-col">
-                    <span className="text-xs text-[#6a7f87]">Fat (g)</span>
-                    <input
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      value={nutritionGoals.fat_g ?? ""}
-                      onChange={(e) => {
-                        hasUserEditedGoals.current = true;
-                        const v = e.target.value === "" ? null : Number(e.target.value);
-                        setNutritionGoals((p) => ({ ...p, fat_g: v }));
-                      }}
-                      placeholder="e.g. 70"
-                      className="mt-1 rounded-lg border border-[#e6eef0] px-3 py-2 text-sm outline-none"
-                    />
-                  </label>
-                </div>
-
-                {/* Progress pies using DB daily totals (only show when a goal is set) */}
-                <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {nutritionGoals.calories != null && (
-                    <div className="flex items-center gap-4">
-                      <ProgressPie
-                        label="Calories"
-                        value={userData?.calories ?? 0}
-                        goal={nutritionGoals.calories}
-                        color="#f97316"
-                      />
-                    </div>
-                  )}
-
-                  {nutritionGoals.protein_g != null && (
-                    <div className="flex items-center gap-4">
-                      <ProgressPie
-                        label="Protein"
-                        value={userData?.protein ?? 0}
-                        goal={nutritionGoals.protein_g}
-                        color="#10b981"
-                      />
-                    </div>
-                  )}
-
-                  {/** Optional: show carbs/fat if user set goals */}
-                  {nutritionGoals.carbs_g != null && (
-                    <div className="flex items-center gap-4">
-                      <ProgressPie
-                        label="Carbs"
-                        value={userData?.carbs ?? 0}
-                        goal={nutritionGoals.carbs_g}
-                        color="#3b82f6"
-                      />
-                    </div>
-                  )}
-
-                  {nutritionGoals.fat_g != null && (
-                    <div className="flex items-center gap-4">
-                      <ProgressPie
-                        label="Fat"
-                        value={userData?.fat ?? 0}
-                        goal={nutritionGoals.fat_g}
-                        color="#ef4444"
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-4 flex items-center justify-between">
-                  <div className="text-xs text-[#6a7f87]">
-                    {savedAt ? <SavedTimestamp ts={savedAt} /> : "Saved locally"}
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        setNutritionGoals({ calories: null, protein_g: null, carbs_g: null, fat_g: null });
-                        try { await saveNutritionGoals(); } catch {};
-                      }}
-                      className="rounded-full border border-[#e6eef0] px-3 py-1 text-sm text-[#0d2e38]"
-                    >
-                      Clear
-                    </button>
-                    <button
-                      type="button"
-                      onClick={async () => { setSaveStatus('saving'); await saveNutritionGoals(); }}
-                      className="rounded-full border border-[#e6eef0] px-3 py-1 text-sm text-[#0d2e38]"
-                    >
-                      {saveStatus === 'saving' ? 'Saving…' : 'Save'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const reset = { calories: null, protein_g: null, carbs_g: null, fat_g: null };
-                        setNutritionGoals(reset);
-                        try {
-                          localStorage.removeItem(NUTRI_GOALS_KEY);
-                          setSavedAt(Date.now());
-                        } catch {}
-                      }}
-                      className="rounded-full bg-[#063643] px-3 py-1 text-sm font-semibold text-white"
-                    >
-                      Reset
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <p className="mt-4 text-sm leading-7 text-[#35515B]">
-                This is a placeholder modal for <span className="font-semibold">{openTool}</span>.
-                We can wire this up to the real tool flow next.
-              </p>
-            )}
+              )}
+            </div>
           </div>
         </div>
       ) : null}

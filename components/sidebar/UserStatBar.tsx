@@ -4,6 +4,7 @@ import { useState } from "react";
 import UserInfo from "@/components/dashboard/UserInfo";
 import DailyTracking from "@/components/dashboard/DailyTracking";
 import MealPlan from "@/components/dashboard/MealPlan";
+import HealthTrendsModal from "@/components/dashboard/HealthTrendsModal";
 import { useUserData } from "@/lib/context/user-data";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { addToDailyLog } from "@/lib/utils/daily-log";
@@ -27,9 +28,172 @@ const meals = [
   { label: "Dinner", detail: "dinner", icon: Soup },
 ];
 
+// ── Insight logic ──────────────────────────────────────────────────────────────
+
+type Mood = "high" | "stable" | "low";
+
+function getMoodInsight(
+  mood: Mood,
+  calories: number,
+  protein: number,
+  fat: number,
+  carbs: number
+): { headline: string; body: string; accent: string } {
+  const total = protein + fat + carbs;
+  const proteinPct = total > 0 ? (protein / total) * 100 : 0;
+  const carbsPct   = total > 0 ? (carbs   / total) * 100 : 0;
+  const fatPct     = total > 0 ? (fat     / total) * 100 : 0;
+
+  if (mood === "low") {
+    if (carbsPct > 60)
+      return {
+        headline: "High-carb slump detected",
+        body: "Your carbs are dominating today's macros. Try pairing tomorrow's lunch with 10–15g extra protein to stabilise blood sugar.",
+        accent: "#ef4444",
+      };
+    if (proteinPct < 20)
+      return {
+        headline: "Protein may be too low",
+        body: "Low protein can reduce satiety and mental focus. Aim for at least 20% of your macros from protein.",
+        accent: "#f97316",
+      };
+    if (calories < 800)
+      return {
+        headline: "You might be under-fuelled",
+        body: "Under 800 kcal logged today. Low energy is expected — make sure you're eating enough for your activity level.",
+        accent: "#f97316",
+      };
+    return {
+      headline: "We couldn't pinpoint a cause",
+      body: "Your macros look okay. The slump might be sleep or hydration. Try a glass of water and a protein-rich snack.",
+      accent: "#6b7280",
+    };
+  }
+
+  if (mood === "stable") {
+    if (proteinPct >= 20 && carbsPct <= 55)
+      return {
+        headline: "Solid macro balance",
+        body: "Your ratios are well-distributed today. This is a good baseline to repeat on busy days.",
+        accent: "#3D8489",
+      };
+    return {
+      headline: "Steady as she goes",
+      body: "Nothing in today's macros stands out negatively. Keep logging to spot longer-term patterns.",
+      accent: "#3D8489",
+    };
+  }
+
+  // mood === "high"
+  if (proteinPct >= 25 && carbsPct >= 35 && carbsPct <= 55)
+    return {
+      headline: "Golden Ratio achieved! 🎯",
+      body: `${Math.round(proteinPct)}% Protein · ${Math.round(carbsPct)}% Carbs · ${Math.round(fatPct)}% Fats — this mix seems to be your energy sweet spot. Save this day's meals as a template.`,
+      accent: "#16a34a",
+    };
+  if (proteinPct >= 25)
+    return {
+      headline: "High protein day",
+      body: "Protein-led days often support sustained energy and muscle recovery. Great work!",
+      accent: "#16a34a",
+    };
+  return {
+    headline: "Energy is high — nice!",
+    body: "Keep track of what you ate today. Your macros may explain the boost — check the Health Insights panel.",
+    accent: "#16a34a",
+  };
+}
+
+// ── Energy Mood Picker component ───────────────────────────────────────────────
+
+interface EnergyMoodPickerProps {
+  calories: number;
+  protein: number;
+  fat: number;
+  carbs: number;
+  mood: Mood | null;
+  onMood: (m: Mood) => void;
+}
+
+const MOODS: { key: Mood; emoji: string; label: string }[] = [
+  { key: "high",   emoji: "⚡", label: "High"   },
+  { key: "stable", emoji: "😐", label: "Stable" },
+  { key: "low",    emoji: "😴", label: "Low"    },
+];
+
+function EnergyMoodPicker({ calories, protein, fat, carbs, mood, onMood }: EnergyMoodPickerProps) {
+  const insight = mood ? getMoodInsight(mood, calories, protein, fat, carbs) : null;
+
+  return (
+    <div
+      className="relative rounded-2xl border p-4"
+      style={{
+        background: "rgba(255,255,255,0.70)",
+        borderColor: "rgba(61,132,137,0.18)",
+      }}
+    >
+      <p
+        className="mb-3 text-[10px] font-black tracking-[0.22em]"
+        style={{ color: "rgba(13,46,56,0.40)" }}
+      >
+        HOW&apos;S YOUR ENERGY TODAY?
+      </p>
+
+      <div className="flex items-center justify-between gap-2">
+        {MOODS.map(({ key, emoji, label }) => (
+          <button
+            key={key}
+            onClick={() => onMood(key)}
+            className="flex flex-1 flex-col items-center gap-1 rounded-xl py-2 transition-all duration-200"
+            style={{
+              background: mood === key ? "rgba(61,132,137,0.12)" : "transparent",
+              border: `1.5px solid ${mood === key ? "#3D8489" : "rgba(61,132,137,0.15)"}`,
+              transform: mood === key ? "scale(1.04)" : "scale(1)",
+            }}
+          >
+            <span className="text-xl leading-none">{emoji}</span>
+            <span
+              className="text-[10px] font-semibold"
+              style={{ color: mood === key ? "#0D2D35" : "rgba(13,46,56,0.45)" }}
+            >
+              {label}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* In-flow expandable insight panel: animates height/padding so width doesn't change */}
+      <div
+        className="mt-3 rounded-xl overflow-hidden transition-[max-height,padding,opacity] duration-200"
+        style={{
+          background: insight ? `${insight.accent}12` : "transparent",
+          border: insight ? `1px solid ${insight.accent}30` : "none",
+          maxHeight: insight ? "260px" : "0px",
+          padding: insight ? "12px" : "0px",
+          opacity: insight ? 1 : 0,
+        }}
+        aria-hidden={!insight}
+      >
+        {insight && (
+          <div>
+            <p className="text-xs font-bold leading-snug" style={{ color: insight.accent }}>
+              {insight.headline}
+            </p>
+            <p className="mt-1 text-[11px] leading-snug" style={{ color: "rgba(13,46,56,0.65)" }}>
+              {insight.body}
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function UserStatBar() {
   const snack = useUserData();
   const [showSnackModal, setShowSnackModal] = useState(false);
+  const [showTrends, setShowTrends] = useState(false);
+  const [mood, setMood] = useState<"high" | "stable" | "low" | null>(null);
   const [confirmEaten, setConfirmEaten] = useState(false);
   const [deletingSnack, setDeletingSnack] = useState(false);
 
@@ -141,7 +305,7 @@ export function UserStatBar() {
 
   return (
     <>
-    <aside className="hidden h-full flex-col rounded-3xl border border-[#e0e5e9] bg-white p-5 lg:flex">
+    <aside className="hidden h-full flex-col rounded-3xl border border-[#e0e5e9] bg-white p-5 lg:flex overflow-y-auto pb-6">
           <header className="flex items-start justify-between border-b border-[#edf1f4] pb-4">
             <div>
               <p className="text-2xl font-semibold">
@@ -167,7 +331,13 @@ export function UserStatBar() {
           <section className="mt-5">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-xl font-semibold">Nutrition</h3>
-              <span className="text-[#8aa0a8]">...</span>
+              <button
+                onClick={() => setShowTrends(true)}
+                className="rounded-full px-2 py-0.5 text-sm font-bold text-[#8aa0a8] transition-colors hover:bg-[#f0f4f5] hover:text-[#0d2e38]"
+                title="View Health Trends"
+              >
+                ...
+              </button>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <article className="rounded-2xl bg-[#0d2e38] p-3 text-white">
@@ -222,8 +392,18 @@ export function UserStatBar() {
             </div>
           </section>
 
+          <div className="mt-4 mb-6">
+            <EnergyMoodPicker
+              calories={snack.calories}
+              protein={snack.protein}
+              fat={snack.fat}
+              carbs={snack.carbs}
+              mood={mood}
+              onMood={setMood}
+            />
+          </div>
+
           <section className="mt-auto rounded-2xl bg-[#0d2e38] p-4 text-white">
-            <h3 className="text-lg font-semibold">Quick Snack</h3>
             <button
               className="mt-3 w-full rounded-2xl bg-white/10 p-3 text-left transition hover:bg-white/20"
               onClick={() => setShowSnackModal(true)}
@@ -240,6 +420,9 @@ export function UserStatBar() {
             </button>
           </section>
         </aside>
+
+      {/* ── Health Trends modal ── */}
+      {showTrends && <HealthTrendsModal onClose={() => setShowTrends(false)} />}
 
       {/* ── Snack cook modal ── */}
       {showSnackModal && (

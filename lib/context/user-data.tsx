@@ -23,6 +23,7 @@ interface UserData {
   snack_protein_g: number | null;
   snack_fat_g: number | null;
   snack_carbs_g: number | null;
+  anyMealEaten: boolean;
   loading: boolean;
   refresh: () => void;
 }
@@ -47,6 +48,7 @@ const defaultData: Omit<UserData, "refresh"> = {
   snack_protein_g: null,
   snack_fat_g: null,
   snack_carbs_g: null,
+  anyMealEaten: false,
   loading: true,
 };
 
@@ -110,7 +112,7 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
         let mealsData: any[] = [];
         const enrichedRes = await supabase
           .from("meal_plans")
-          .select("meal_type,recipe_name,instructions,description,ingredients,calories,cook_time,protein_g,fat_g,carbs_g")
+          .select("meal_type,recipe_name,instructions,description,ingredients,calories,cook_time,protein_g,fat_g,carbs_g,eaten")
           .eq("user_id", user.id)
           .eq("date", today)
           .in("meal_type", ["breakfast", "lunch", "dinner", "snack"]);
@@ -127,6 +129,8 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
         } else {
           mealsData = enrichedRes.data ?? [];
         }
+
+        const anyMealEaten = mealsData.some((row: { eaten?: boolean }) => row.eaten === true);
 
         const meals: Record<string, { recipe_name: string; instructions: string; description?: string; ingredients?: unknown; calories?: number | null; cook_time?: number | null; protein_g?: number | null; fat_g?: number | null; carbs_g?: number | null }> = {};
         for (const row of mealsData) {
@@ -163,6 +167,7 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
           snack_protein_g: meals.snack?.protein_g ?? null,
           snack_fat_g: meals.snack?.fat_g ?? null,
           snack_carbs_g: meals.snack?.carbs_g ?? null,
+          anyMealEaten,
           loading: false,
         });
       } catch (err) {
