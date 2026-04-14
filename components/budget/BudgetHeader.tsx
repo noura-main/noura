@@ -2,24 +2,23 @@ import FallbackImage from "@/components/ui/FallbackImage";
 
 export function BudgetHeader() {
   return (
-    <section className="grid gap-4 rounded-3xl bg-[#063643] p-7 text-white md:grid-cols-[1.1fr_0.9fr]">
-      <div>
-        <h1 className="max-w-xl text-3xl font-semibold leading-tight tracking-wide md:text-4xl">
-          Your Budget: Balance Food & Spending
+    <div className="relative overflow-hidden rounded-3xl bg-[#063643] px-8 py-10 text-white">
+      <div className="max-w-[55%]">
+        <h1 className="text-5xl font-semibold leading-tight tracking-tight">
+          Your Budget:
         </h1>
-        <p className="mt-3 max-w-lg text-sm text-white/75">
-          Track groceries and dining out, stay within your weekly target, and spot savings.
+        <p className="mt-1 text-3xl font-light leading-tight opacity-90">
+          Balance Your Meals & Money
         </p>
       </div>
-      <div className="flex items-center justify-center">
-        <div className="flex h-40 w-56 items-center justify-center md:h-44 md:w-64">
-          <FallbackImage
-            src="/budget/budgeticon2.png"
-            alt=""
-            className="h-auto max-h-full w-full object-contain opacity-95"
-          />
-        </div>
+
+      <div className="pointer-events-none absolute bottom-0 right-6 flex items-end select-none">
+        <FallbackImage
+          src="/budget/budgeticon2.png"
+          alt="Meal plan illustration"
+          className="h-44 w-70 object-contain object-bottom drop-shadow-2xl"
+        />
       </div>
-    </section>
+    </div>
   );
 }

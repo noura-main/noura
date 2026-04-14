@@ -95,141 +95,149 @@ export function RecentSpendingSection() {
   }
 
   return (
-    <>
-      <section className="budget-print-area rounded-3xl bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-lg font-semibold text-[#0d2e38]">Recent Spending</h2>
-          <div className="no-print flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => window.print()}
-              className="inline-flex items-center gap-1.5 rounded-full border border-[#063643]/20 px-3 py-1.5 text-xs font-semibold text-[#063643] hover:bg-[#063643]/5"
-            >
-              <Printer className="h-3.5 w-3.5" />
-              Print
-            </button>
-            <button
-              type="button"
-              onClick={() => downloadCsv(transactions)}
-              className="inline-flex items-center gap-1.5 rounded-full border border-[#063643]/20 px-3 py-1.5 text-xs font-semibold text-[#063643] hover:bg-[#063643]/5"
-            >
-              <FileSpreadsheet className="h-3.5 w-3.5" />
-              Export
-            </button>
-            <button
-              type="button"
-              onClick={() => shareTransactions(transactions)}
-              className="inline-flex items-center gap-1.5 rounded-full border border-[#063643]/20 px-3 py-1.5 text-xs font-semibold text-[#063643] hover:bg-[#063643]/5"
-            >
-              <Share2 className="h-3.5 w-3.5" />
-              Share
-            </button>
-          </div>
+  <>
+    {/* 1. Use h-full to fill parent container height. 
+           2. Use flex flex-col to manage internal layout. */}
+    <section className="budget-print-area flex h-full flex-col rounded-3xl bg-white p-6 shadow-sm">
+      {/* HEADER SECTION (Static) */}
+      <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-lg font-semibold text-[#0d2e38]">Recent Spending</h2>
+        <div className="no-print flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="inline-flex items-center gap-1.5 rounded-full border border-[#063643]/20 px-3 py-1.5 text-xs font-semibold text-[#063643] hover:bg-[#063643]/5"
+          >
+            <Printer className="h-3.5 w-3.5" />
+            Print
+          </button>
+          <button
+            type="button"
+            onClick={() => downloadCsv(transactions)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-[#063643]/20 px-3 py-1.5 text-xs font-semibold text-[#063643] hover:bg-[#063643]/5"
+          >
+            <FileSpreadsheet className="h-3.5 w-3.5" />
+            Export
+          </button>
+          <button
+            type="button"
+            onClick={() => shareTransactions(transactions)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-[#063643]/20 px-3 py-1.5 text-xs font-semibold text-[#063643] hover:bg-[#063643]/5"
+          >
+            <Share2 className="h-3.5 w-3.5" />
+            Share
+          </button>
         </div>
+      </div>
 
-        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-[#0d2e38]">sort by:</span>
-            <select
-              value={sortMode}
-              onChange={(e) => setSortMode(e.target.value as SortMode)}
-              className="rounded-xl border border-[#3d8489]/30 bg-white px-3 py-2 text-sm text-[#0D2D35] outline-none focus:border-[#3D8489]"
-              aria-label="Sort by"
-            >
-              <option value="dateDesc">Most recent</option>
-              <option value="amountDesc">Largest amount</option>
-              <option value="amountAsc">Smallest amount</option>
-            </select>
-          </div>
+      {/* SORT CONTROLS (Static) */}
+      <div className="mt-4 flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-[#0d2e38]">sort by:</span>
+          <select
+            value={sortMode}
+            onChange={(e) => setSortMode(e.target.value as SortMode)}
+            className="rounded-xl border border-[#3d8489]/30 bg-white px-3 py-2 text-sm text-[#0D2D35] outline-none focus:border-[#3D8489]"
+            aria-label="Sort by"
+          >
+            <option value="dateDesc">Most recent</option>
+            <option value="amountDesc">Largest amount</option>
+            <option value="amountAsc">Smallest amount</option>
+          </select>
         </div>
+      </div>
 
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[420px] text-left text-sm">
-            <thead>
-              <tr className="border-b border-[#eceef0] text-xs font-bold uppercase tracking-wide text-[#6a7f87]">
-                <th className="pb-3 pr-4">Location</th>
-                <th className="pb-3 pr-4">Item(s)</th>
-                <th className="pb-3 pr-4">Date</th>
-                <th className="pb-3 pr-4">Amount</th>
-                <th className="pb-3">Result</th>
-                <th className="no-print pb-3 text-right">Actions</th>
+      {/* SCROLLABLE TABLE AREA (This grows to fill the height) */}
+      <div className="mt-4 flex-1 overflow-auto custom-scrollbar">
+        <table className="w-full min-w-[420px] text-left text-sm">
+          <thead className="sticky top-0 z-10 bg-white">
+            <tr className="border-b border-[#eceef0] text-xs font-bold uppercase tracking-wide text-[#6a7f87]">
+              <th className="pb-3 pr-4">Location</th>
+              <th className="pb-3 pr-4">Item(s)</th>
+              <th className="pb-3 pr-4">Date</th>
+              <th className="pb-3 pr-4">Amount</th>
+              <th className="pb-3">Result</th>
+              <th className="no-print pb-3 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {previewRows.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="py-8 text-center text-[#6a7f87]">
+                  No transactions yet.
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {previewRows.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-8 text-center text-[#6a7f87]">
-                    No transactions yet.
+            ) : (
+              previewRows.map((t) => (
+                <tr key={t.id} className="border-b border-[#f3f4f6] last:border-0">
+                  <td className="py-3 pr-4 font-medium text-[#0d2e38]">{t.location}</td>
+                  <td className="py-3 pr-4 text-[#6a7f87]">{formatItemsCell(t.items)}</td>
+                  <td className="py-3 pr-4 text-[#6a7f87]">{formatTransactionDateLabel(t.date)}</td>
+                  <td className="py-3 pr-4 tabular-nums font-semibold text-[#0d2e38]">{formatUsd(t.amount)}</td>
+                  <td className="py-3">
+                    {t.result === "Done" ? (
+                      <span className="inline-flex items-center gap-1 text-sm font-medium text-[#2563eb]">
+                        <Check className="h-4 w-4 shrink-0" />
+                        Done
+                      </span>
+                    ) : (
+                      <span className="text-sm font-medium text-[#6a7f87]">Pending</span>
+                    )}
+                  </td>
+                  <td className="no-print py-3 text-right">
+                    <div className="inline-flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditTxId(t.id)}
+                        className="rounded-lg border border-[#063643]/20 p-2 text-[#063643] hover:bg-[#063643]/5"
+                        aria-label="Edit transaction"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => confirmDelete(t)}
+                        className="rounded-lg border border-red-500/20 p-2 text-red-600 hover:bg-red-50"
+                        aria-label="Delete transaction"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
-              ) : (
-                previewRows.map((t) => (
-                  <tr key={t.id} className="border-b border-[#f3f4f6] last:border-0">
-                    <td className="py-3 pr-4 font-medium text-[#0d2e38]">{t.location}</td>
-                    <td className="py-3 pr-4 text-[#6a7f87]">{formatItemsCell(t.items)}</td>
-                    <td className="py-3 pr-4 text-[#6a7f87]">{formatTransactionDateLabel(t.date)}</td>
-                    <td className="py-3 pr-4 tabular-nums font-semibold text-[#0d2e38]">{formatUsd(t.amount)}</td>
-                    <td className="py-3">
-                      {t.result === "Done" ? (
-                        <span className="inline-flex items-center gap-1 text-sm font-medium text-[#2563eb]">
-                          <Check className="h-4 w-4 shrink-0" />
-                          Done
-                        </span>
-                      ) : (
-                        <span className="text-sm font-medium text-[#6a7f87]">Pending</span>
-                      )}
-                    </td>
-                    <td className="no-print py-3 text-right">
-                      <div className="inline-flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setEditTxId(t.id)}
-                          className="rounded-lg border border-[#063643]/20 p-2 text-[#063643] hover:bg-[#063643]/5"
-                          aria-label="Edit transaction"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => confirmDelete(t)}
-                          className="rounded-lg border border-red-500/20 p-2 text-red-600 hover:bg-red-50"
-                          aria-label="Delete transaction"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
 
-        {sorted.length > 0 && (
+      {/* FOOTER BUTTON (Static) */}
+      {sorted.length > 0 && (
+        <div className="shrink-0 pt-4 border-t border-gray-50">
           <button
             type="button"
             onClick={() => setShowAll(true)}
-            className="no-print mt-4 flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-semibold text-[#063643] hover:bg-[#063643]/5"
+            className="no-print flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-semibold text-[#063643] hover:bg-[#063643]/5"
           >
             Show all my transactions
             <ChevronDown className="h-4 w-4" />
           </button>
-        )}
-      </section>
+        </div>
+      )}
+    </section>
 
-      <AllTransactionsModal
-        open={showAll}
-        onClose={() => setShowAll(false)}
-        transactions={transactions}
-        sortMode={sortMode}
-      />
+    <AllTransactionsModal
+      open={showAll}
+      onClose={() => setShowAll(false)}
+      transactions={transactions}
+      sortMode={sortMode}
+    />
 
-      <EditTransactionModal
-        open={editTxId !== null}
-        onClose={() => setEditTxId(null)}
-        transaction={editTx}
-      />
-    </>
-  );
+    <EditTransactionModal
+      open={editTxId !== null}
+      onClose={() => setEditTxId(null)}
+      transaction={editTx}
+    />
+  </>
+);
 }

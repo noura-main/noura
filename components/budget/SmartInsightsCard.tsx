@@ -39,7 +39,7 @@ const INSIGHTS: { tip: string; save: number }[] = [
   { tip: "Use loyalty rewards programs at grocery stores", save: 3 },
   { tip: "Buy pasta sauce in jars instead of single-serve cups", save: 2 },
   { tip: "Make popcorn at home instead of buying packaged snacks", save: 3 },
-  { tip: "Choose cheaper cuts of meat for slow cooking", save: 7 },
+  { tip: "Cook pasta meals at home instead of ordering takeout", save: 7 },
   { tip: "Buy tortillas instead of sandwich bread for versatility", save: 2 },
   { tip: "Avoid convenience store snacks and buy from grocery stores", save: 4 },
   { tip: "Make tea at home instead of buying bottled tea", save: 3 },
