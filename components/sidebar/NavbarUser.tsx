@@ -22,6 +22,7 @@ const navItems = [
   { label: "Recipes", icon: FileText, href: "/recipes" },
   { label: "Meal Plan", icon: UtensilsCrossed, href: "/mealplan" },
   { label: "Preferences", icon: Heart, href: "/preferences" },
+  { label: "Budget", icon: WalletCards, href: "/budget" },
   { label: "Community", icon: MapPinned, href: "/community" },
 ];
 

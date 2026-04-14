@@ -4,6 +4,7 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import FallbackImage from "@/components/ui/FallbackImage";
 import { Search, Plus, Minus, ScanLine, Trash2, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useReceiptScan } from "@/lib/context/receipt-scan";
 
 type Unit = "units" | "oz" | "lbs" | "cups" | "tbsp" | "gal";
 type Category =
@@ -410,6 +411,7 @@ function IngredientCard({
 }
 
 export default function KitchenPantry() {
+  const { openReceiptScan } = useReceiptScan();
   const [ingredients, setIngredients] = useState<Ingredient[]>(INITIAL_INGREDIENTS);
   const [search, setSearch] = useState("");
   const [loadingName, setLoadingName] = useState<string | null>(null);
@@ -782,7 +784,7 @@ export default function KitchenPantry() {
         <div className="h-px flex-1 bg-[#0d2e38]" />
         <button
           type="button"
-          onClick={() => console.log("Feature coming soon")}
+          onClick={() => openReceiptScan()}
           className="flex items-center gap-2 rounded-full bg-[#063643] px-6 py-2 text-sm font-semibold text-white hover:bg-[#0d3a49] transition"
         >
           <ScanLine className="h-4 w-4" />
