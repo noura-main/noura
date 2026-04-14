@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useUserData } from "@/lib/context/user-data";
+import { useReceiptScan } from "@/lib/context/receipt-scan";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import FallbackImage from "@/components/ui/FallbackImage";
 import HealthTrendsModal from "@/components/dashboard/HealthTrendsModal";
@@ -46,6 +47,7 @@ export function SmartTools() {
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const userData = useUserData();
+  const { openReceiptScan } = useReceiptScan();
 
   function ProgressPie({ label, value, goal, color }: { label: string; value: number; goal: number | null; color: string }) {
     const pct = !goal || goal <= 0 ? 0 : Math.min(1, value / goal);
@@ -221,6 +223,10 @@ export function SmartTools() {
               type="button"
               onClick={() => {
                 setActiveTool(label);
+                if (label === "Scan Receipt") {
+                  openReceiptScan();
+                  return;
+                }
                 setOpenTool(label);
               }}
               aria-pressed={isActive}

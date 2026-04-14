@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { fetchPixabayImageClient } from "@/lib/utils/pixabay";
 
-interface Props extends React.ImgHTMLAttributes<HTMLImageElement> {
+interface Props extends Omit<React.ImgHTMLAttributes<HTMLImageElement>, "src"> {
   src?: string | null;
   fallback?: string;
   fill?: boolean; // when true, position absolute and cover parent

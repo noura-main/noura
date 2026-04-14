@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Raleway, Inconsolata } from 'next/font/google';
 import { UserDataProvider } from "@/lib/context/user-data";
+import { BudgetTransactionsProvider } from "@/lib/context/budget-transactions";
+import { ReceiptScanProvider } from "@/lib/context/receipt-scan";
 import "./globals.css";
 
 const raleway = Raleway({
@@ -23,7 +25,13 @@ export default function RootLayout({
       lang="en"
       className={`${raleway.variable} h-full antialiased`}
     >
-      <body className="min-h-full"><UserDataProvider>{children}</UserDataProvider></body>
+      <body className="min-h-full">
+        <UserDataProvider>
+          <BudgetTransactionsProvider>
+          <ReceiptScanProvider>{children}</ReceiptScanProvider>
+        </BudgetTransactionsProvider>
+        </UserDataProvider>
+      </body>
     </html>
   );
 }

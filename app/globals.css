@@ -22,6 +22,26 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Budget page: print hides side rails, expands main */
+@media print {
+  .budget-shell > aside {
+    display: none !important;
+  }
+  .budget-shell {
+    background: #fff !important;
+  }
+  .budget-shell main {
+    grid-column: 1 / -1 !important;
+    overflow: visible !important;
+    height: auto !important;
+    border-radius: 0 !important;
+    background: #fff !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+}
+
 /* ── Spice Range Slider ─────────────────────────────────────────── */
 .spice-slider {
   -webkit-appearance: none;
