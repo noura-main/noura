@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { ScanLine, X } from "lucide-react";
+import { ScanLine, X, Utensils, ShoppingBasket } from "lucide-react";
 import { useBudgetTransactions } from "@/lib/context/budget-transactions";
 import type { BudgetTransaction, BudgetTransactionType } from "@/lib/budget/types";
 
@@ -9,26 +9,6 @@ type Props = {
   open: boolean;
   onClose: () => void;
 };
-
-const MOCK_POOL: {
-  location: string;
-  items: string[];
-  type: BudgetTransactionType;
-  amountMin: number;
-  amountMax: number;
-}[] = [
-  { location: "Whole Foods", type: "Groceries", items: ["apples", "spinach", "almonds", "olive oil"], amountMin: 12, amountMax: 45 },
-  { location: "Trader Joe's", type: "Groceries", items: ["banana", "granola", "kale chips", "yogurt"], amountMin: 8, amountMax: 32 },
-  { location: "Kroger", type: "Groceries", items: ["oats", "blueberries", "cheddar", "eggs"], amountMin: 15, amountMax: 55 },
-  { location: "Walmart", type: "Groceries", items: ["rice", "beans", "tomatoes", "tortillas"], amountMin: 20, amountMax: 60 },
-  { location: "Starbucks", type: "Eating Out", items: ["latte", "cold brew"], amountMin: 3, amountMax: 9 },
-  { location: "Chipotle", type: "Eating Out", items: ["burrito", "guacamole", "salsa"], amountMin: 9, amountMax: 14 },
-  { location: "Local Cafe", type: "Eating Out", items: ["sandwich", "salad", "tea"], amountMin: 5, amountMax: 12 },
-];
-
-function randomInt(min: number, max: number) {
-  return Math.floor(min + Math.random() * (max - min + 1));
-}
 
 function todayYMD() {
   const t = new Date();
@@ -38,46 +18,20 @@ function todayYMD() {
   return `${y}-${m}-${d}`;
 }
 
-function pickSubset<T>(arr: T[]) {
-  const copy = [...arr];
-  const take = Math.max(1, Math.min(copy.length, randomInt(1, Math.min(4, copy.length))));
-  const out: T[] = [];
-  for (let i = 0; i < take; i++) {
-    const idx = randomInt(0, copy.length - 1);
-    out.push(copy[idx]);
-    copy.splice(idx, 1);
-  }
-  return out;
-}
-
-function generateMockRows(): Omit<BudgetTransaction, "id">[] {
-  const n = randomInt(1, 3);
-  const rows: Omit<BudgetTransaction, "id">[] = [];
-  const used = new Set<number>();
-  for (let i = 0; i < n; i++) {
-    let idx = randomInt(0, MOCK_POOL.length - 1);
-    let guard = 0;
-    while (used.has(idx) && guard++ < 20) idx = randomInt(0, MOCK_POOL.length - 1);
-    used.add(idx);
-    const m = MOCK_POOL[idx];
-    rows.push({
-      location: m.location,
-      items: pickSubset(m.items),
-      date: todayYMD(),
-      amount: randomInt(m.amountMin, m.amountMax),
-      result: Math.random() > 0.15 ? "Done" : "Pending",
-      type: m.type,
-    });
-  }
-  return rows;
-}
-
 export default function ReceiptScanModal({ open, onClose }: Props) {
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
   const { addTransactions } = useBudgetTransactions();
+  
+  const [mounted, setMounted] = useState(false);
   const [phase, setPhase] = useState<"idle" | "processing" | "done">("idle");
   const [message, setMessage] = useState("");
+  // Defaulting to Eating Out since Groceries is disabled
+  const [scanMode, setScanMode] = useState<"Groceries" | "Eating Out">("Eating Out");
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!open) {
@@ -88,132 +42,150 @@ export default function ReceiptScanModal({ open, onClose }: Props) {
     closeRef.current?.focus();
   }, [open]);
 
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  function handleFile() {
     setPhase("processing");
-    setMessage("Reading receipt…");
-    window.setTimeout(() => {
-      setMessage("Extracting line items…");
-    }, 400);
-    window.setTimeout(() => {
-      const rows = generateMockRows();
-      addTransactions(rows);
+    setMessage(scanMode === "Groceries" ? "Parsing individual items..." : "Calculating total...");
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("scanMode", scanMode);
+
+      const response = await fetch("/api/process-receipt", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to scan");
+      }
+
+      const rawData = await response.json();
+      
+      const dataArray = Array.isArray(rawData) 
+        ? rawData 
+        : (rawData.transactions || rawData.items || [rawData]);
+
+      const transactions: Omit<BudgetTransaction, "id">[] = dataArray.map((item: any) => ({
+        location: item.location || "Unknown Store",
+        items: Array.isArray(item.items) ? item.items : [item.name || (scanMode === "Eating Out" ? "Dining" : "Item")],
+        date: item.date || todayYMD(),
+        amount: typeof item.amount === "number" ? item.amount : parseFloat(item.amount) || 0,
+        result: "Done" as const,
+        type: (item.type as BudgetTransactionType) || scanMode,
+      }));
+
+      addTransactions(transactions);
       setPhase("done");
-      setMessage(`Added ${rows.length} purchase${rows.length === 1 ? "" : "s"} from receipt.`);
-    }, 1400);
+      setMessage(`Successfully added ${transactions.length} entry to your budget.`);
+    } catch (err: any) {
+      console.error(err);
+      setPhase("idle");
+      alert(err.message || "Error scanning receipt");
+    } finally {
+      e.target.value = "";
+    }
   }
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
   return (
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-      style={{ background: "rgba(6,54,67,0.65)", backdropFilter: "blur(6px)" }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget && phase !== "processing") onClose();
-      }}
-      role="presentation"
+      style={{ background: "rgba(6,54,67,0.7)", backdropFilter: "blur(8px)" }}
     >
       <div
-        className="w-full max-w-md overflow-hidden rounded-3xl shadow-2xl"
-        style={{
-          background: "rgba(255,255,255,0.96)",
-          border: "1px solid rgba(61,132,137,0.18)",
-        }}
+        className="w-full max-w-md overflow-hidden rounded-3xl shadow-2xl bg-white"
         role="dialog"
         aria-modal="true"
-        aria-labelledby={titleId}
       >
-        <div
-          className="relative flex items-center justify-between px-6 py-5"
-          style={{ background: "#0D2D35" }}
-        >
-          <div className="flex items-center gap-3">
-            <div
-              className="flex h-10 w-10 items-center justify-center rounded-xl"
-              style={{ background: "rgba(61,132,137,0.20)" }}
-            >
-              <ScanLine className="h-5 w-5 text-[#3D8489]" />
-            </div>
-            <div>
-              <p className="text-[10px] font-black tracking-[0.22em] text-white/45">SCAN RECEIPT</p>
-              <h2 id={titleId} className="text-xl font-bold text-white">
-                Add purchases from receipt
-              </h2>
-            </div>
+        <div className="relative flex items-center justify-between px-6 py-5 bg-[#0D2D35]">
+          <div className="flex items-center gap-3 text-white">
+            <ScanLine className="h-6 w-6 text-[#3D8489]" />
+            <h2 className="text-xl font-bold">Receipt Scanner</h2>
           </div>
-          <button
-            ref={closeRef}
-            type="button"
-            onClick={onClose}
-            disabled={phase === "processing"}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-white/60 transition-colors hover:bg-white/15 disabled:opacity-50"
-            aria-label="Close"
-          >
-            <X size={16} />
+          <button onClick={onClose} className="text-white/60 hover:text-white">
+            <X size={20} />
           </button>
         </div>
 
         <div className="p-6">
           {phase === "idle" && (
-            <div className="space-y-4">
-              <p className="text-sm leading-relaxed text-[#0d2e38]/70">
-                Take a photo or upload an image of your grocery receipt. We&apos;ll parse line items
-                (demo uses simulated data).
-              </p>
-              <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[#3d8489]/40 bg-[#063643]/5 px-4 py-10 transition hover:bg-[#063643]/10">
-                <ScanLine className="mb-2 h-10 w-10 text-[#063643]" />
-                <span className="text-sm font-semibold text-[#0d2e38]">Choose image</span>
-                <span className="mt-1 text-xs text-[#6a7f87]">PNG, JPG — max demo</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="sr-only"
-                  onChange={(e) => {
-                    if (e.target.files?.length) handleFile();
-                    e.target.value = "";
-                  }}
-                />
+            <div className="space-y-6">
+              {/* UPDATED TOGGLE SWITCH */}
+              <div className="flex p-1 bg-gray-100 rounded-2xl border border-gray-200">
+                {/* DINING ON THE LEFT */}
+                <button
+                  onClick={() => setScanMode("Eating Out")}
+                  className={`flex flex-1 items-center justify-center gap-2 py-3 text-sm font-bold rounded-xl transition-all ${
+                    scanMode === "Eating Out" ? "bg-white shadow-md text-[#0D2D35]" : "text-gray-500"
+                  }`}
+                >
+                  <Utensils size={16} />
+                  Dining
+                </button>
+
+                {/* GROCERIES ON THE RIGHT (DISABLED) */}
+                <div className="relative flex-1">
+                  <button
+                    disabled
+                    className="w-full flex items-center justify-center gap-2 py-3 text-sm font-bold rounded-xl text-gray-400 cursor-not-allowed opacity-60"
+                  >
+                    <ShoppingBasket size={16} />
+                    Groceries
+                  </button>
+                  <span className="absolute -top-1 -right-1 bg-[#3D8489] text-white text-[8px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-wider shadow-sm">
+                    Soon
+                  </span>
+                </div>
+              </div>
+
+              <div className="text-center space-y-2">
+                <p className="text-sm text-gray-600 italic">
+                  Dining mode: The restaurant total will be added as a single entry.
+                </p>
+              </div>
+
+              <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[#3D8489]/30 bg-[#F4F7F7] px-4 py-12 transition hover:bg-[#EBF1F2]">
+                <div className="h-12 w-12 mb-3 bg-[#3D8489]/10 rounded-full flex items-center justify-center">
+                  <ScanLine className="h-6 w-6 text-[#3D8489]" />
+                </div>
+                <span className="text-sm font-bold text-[#0D2D35]">Upload Receipt</span>
+                <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={handleFile} />
               </label>
             </div>
           )}
 
           {phase === "processing" && (
-            <div className="flex flex-col items-center py-8">
-              <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#063643] border-t-transparent" />
-              <p className="mt-4 text-sm font-medium text-[#0d2e38]">{message}</p>
+            <div className="flex flex-col items-center py-12 text-center">
+              <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#3D8489] border-t-transparent mb-4" />
+              <p className="text-lg font-bold text-[#0D2D35]">AI is working...</p>
+              <p className="text-sm text-gray-500">{message}</p>
             </div>
           )}
 
           {phase === "done" && (
-            <div className="space-y-4">
-              <p className="text-sm text-[#0d2e38]">{message}</p>
-              <div className="flex justify-end gap-2">
+            <div className="text-center py-6 space-y-6">
+              <div className="h-16 w-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto">
+                <ScanLine size={32} />
+              </div>
+              <p className="font-medium text-[#0D2D35]">{message}</p>
+              <div className="flex flex-col gap-2">
                 <button
-                  type="button"
-                  onClick={() => {
-                    setPhase("idle");
-                    setMessage("");
-                  }}
-                  className="rounded-full border-2 border-[#0D2D35] px-4 py-2 text-xs font-bold text-[#0D2D35] hover:bg-[#0D2D35] hover:text-white"
+                  onClick={() => setPhase("idle")}
+                  className="w-full py-3 text-sm font-bold text-[#3D8489] border-2 border-[#3D8489] rounded-xl"
                 >
-                  Scan another
+                  Scan Another
                 </button>
                 <button
-                  type="button"
                   onClick={onClose}
-                  className="rounded-full bg-[#0D2D35] px-4 py-2 text-xs font-bold text-white hover:opacity-90"
+                  className="w-full py-3 text-sm font-bold bg-[#0D2D35] text-white rounded-xl"
                 >
-                  Done
+                  View Budget
                 </button>
               </div>
             </div>
