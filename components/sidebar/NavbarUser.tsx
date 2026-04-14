@@ -10,6 +10,7 @@ import {
   WalletCards,
   UserRound,
   LogOut,
+  BabyIcon,
 } from "lucide-react";
 import FallbackImage from "@/components/ui/FallbackImage";
 import Link from "next/link";
@@ -33,7 +34,7 @@ export function NavbarUser() {
   async function handleSignOut() {
     const supabase = getSupabaseBrowserClient();
     await supabase?.auth.signOut();
-    router.push("/auth/login");
+    router.push("/");
   }
 
   return (
@@ -63,6 +64,15 @@ export function NavbarUser() {
       </nav>
 
       <div className="mt-auto space-y-2">
+        <Link
+          href="https://noura-play-grow.base44.app/"
+          target="_blank" 
+          className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-md font-semibold text-[#8a8a8a] hover:text-white hover:bg-[#245e6e] target-blank"
+        >
+          <BabyIcon className="h-4 w-4" />
+          Noura Kids
+        </Link>
+
         <Link
           href="/account"
           className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-md font-semibold text-[#8a8a8a] hover:text-white hover:bg-[#245e6e]"

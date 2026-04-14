@@ -43,15 +43,6 @@ export function FoodCard({
         >
           <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
 
-          <button
-            type="button"
-            className="absolute right-4 top-4 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-[#E8F5D8]/95 text-4xl leading-none text-[#4C8C28] shadow-sm transition-transform duration-300 hover:scale-105"
-            aria-label={`Show ${title} details`}
-            onClick={(e) => e.stopPropagation()}
-          >
-            +
-          </button>
-
           <p className="absolute bottom-5 left-5 z-10 text-4xl font-semibold tracking-tight text-white drop-shadow-sm">
             {title}
           </p>
