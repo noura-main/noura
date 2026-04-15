@@ -13,6 +13,7 @@ export type BudgetTransaction = {
   amount: number;
   result: BudgetTransactionResult;
   type: BudgetTransactionType;
+  user_id?: string
 };
 
 export type BudgetPersisted = {

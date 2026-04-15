@@ -7,7 +7,7 @@ import { formatUsd } from "@/lib/budget/format";
 const INSIGHTS: { tip: string; save: number }[] = [
   { tip: "Make iced coffee at home instead of buying daily", save: 3 },
   { tip: "Use a reusable water bottle instead of buying bottled drinks", save: 2 },
-  { tip: "Buy rice in bulk instead of small packages", save: 4 },
+  { tip: "Buy generic milk instead of premium brands", save: 4 },
   { tip: "Choose whole chicken over pre-cut pieces", save: 6 },
   { tip: "Cook pasta meals at home instead of ordering takeout", save: 12 },
   { tip: "Buy generic milk instead of premium brands", save: 1 },

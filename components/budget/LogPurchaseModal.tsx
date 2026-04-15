@@ -24,7 +24,6 @@ export function LogPurchaseModal({ open, onClose }: Props) {
     return `${y}-${m}-${d}`;
   });
   const [amount, setAmount] = useState("");
-  const [result, setResult] = useState<BudgetTransactionResult>("Done");
   const [type, setType] = useState<BudgetTransactionType>("Groceries");
 
   useEffect(() => {
@@ -54,13 +53,12 @@ export function LogPurchaseModal({ open, onClose }: Props) {
       items,
       date,
       amount: n,
-      result,
       type,
+      result: "Done",
     });
     setLocation("");
     setItemsText("");
     setAmount("");
-    setResult("Done");
     setType("Groceries");
     onClose();
   }
@@ -149,17 +147,6 @@ export function LogPurchaseModal({ open, onClose }: Props) {
               placeholder="0.00"
               required
             />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-xs font-bold text-[#0d2e38]/50">Result</label>
-            <select
-              value={result}
-              onChange={(e) => setResult(e.target.value as BudgetTransactionResult)}
-              className="w-full rounded-xl border border-[#3d8489]/30 bg-white px-3 py-2 text-sm text-[#0D2D35] outline-none focus:border-[#3D8489]"
-            >
-              <option value="Done">Done</option>
-              <option value="Pending">Pending</option>
-            </select>
           </div>
           <div>
             <label className="mb-1.5 block text-xs font-bold text-[#0d2e38]/50">Type</label>

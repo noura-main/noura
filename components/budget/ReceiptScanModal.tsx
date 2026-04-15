@@ -4,6 +4,8 @@ import { useEffect, useId, useRef, useState } from "react";
 import { ScanLine, X, Utensils, ShoppingBasket } from "lucide-react";
 import { useBudgetTransactions } from "@/lib/context/budget-transactions";
 import type { BudgetTransaction, BudgetTransactionType } from "@/lib/budget/types";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+
 
 type Props = {
   open: boolean;
@@ -42,54 +44,59 @@ export default function ReceiptScanModal({ open, onClose }: Props) {
     closeRef.current?.focus();
   }, [open]);
 
-  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+  const file = e.target.files?.[0];
+  if (!file) return;
 
-    setPhase("processing");
-    setMessage(scanMode === "Groceries" ? "Parsing individual items..." : "Calculating total...");
+  setPhase("processing");
 
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("scanMode", scanMode);
+  try {
+    // 1. Initialize the client directly to avoid 'getSupabaseBrowserClient' errors
+    const { createClient } = await import("@supabase/supabase-js");
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
 
-      const response = await fetch("/api/process-receipt", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to scan");
-      }
-
-      const rawData = await response.json();
-      
-      const dataArray = Array.isArray(rawData) 
-        ? rawData 
-        : (rawData.transactions || rawData.items || [rawData]);
-
-      const transactions: Omit<BudgetTransaction, "id">[] = dataArray.map((item: any) => ({
-        location: item.location || "Unknown Store",
-        items: Array.isArray(item.items) ? item.items : [item.name || (scanMode === "Eating Out" ? "Dining" : "Item")],
-        date: item.date || todayYMD(),
-        amount: typeof item.amount === "number" ? item.amount : parseFloat(item.amount) || 0,
-        result: "Done" as const,
-        type: (item.type as BudgetTransactionType) || scanMode,
-      }));
-
-      addTransactions(transactions);
-      setPhase("done");
-      setMessage(`Successfully added ${transactions.length} entry to your budget.`);
-    } catch (err: any) {
-      console.error(err);
-      setPhase("idle");
-      alert(err.message || "Error scanning receipt");
-    } finally {
-      e.target.value = "";
+    // 2. Get the current logged-in user
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError || !user) {
+      throw new Error("You must be logged in to scan receipts.");
+      return;
     }
+
+    // 3. Prepare the form data
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("scanMode", scanMode);
+    formData.append("userId", user.id); 
+
+    // 4. Hit the Next.js API route
+    const res = await fetch("/api/process-receipt", { 
+      method: "POST", 
+      body: formData 
+    });
+    
+    const data = await res.json();
+    
+    if (!res.ok) {
+      throw new Error(data.error || "Failed to process receipt");
+    }
+
+    // 5. Update global context
+    // data is the array returned from the API (saved rows from Supabase)
+    addTransactions(data as BudgetTransaction[]); 
+
+    setPhase("done");
+  } catch (err: any) {
+    console.error("Scan Error:", err);
+    alert(err.message || "An error occurred while scanning.");
+    setPhase("idle");
+  } finally {
+    e.target.value = "";
   }
+}
 
   if (!open || !mounted) return null;
 
