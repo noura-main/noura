@@ -21,12 +21,13 @@ export function HeroCard() {
         >
           Start Cooking
         </Link>
-        <button
-          type="button"
+
+        <Link
+          href="#about"
           className="min-w-40 rounded-full border-2 border-[#2A3D45] bg-transparent px-9 py-3 text-lg font-medium text-[#2A3D45] transition-colors duration-300 hover:bg-[#E7E1D7]"
         >
           Preview
-        </button>
+        </Link>
       </div>
     </section>
   );

@@ -47,17 +47,18 @@ const INSIGHTS: { tip: string; save: number }[] = [
   { tip: "Shop with a list to avoid impulse purchases", save: 10 },
 ];
 
-function pickInsight() {
-  const idx = Math.floor(Math.random() * INSIGHTS.length);
-  const row = INSIGHTS[idx];
-  return { tip: row.tip, save:row.save };
+function pickTwoInsights() {
+  // Shuffles the array and takes the first two to ensure they are unique
+  const shuffled = [...INSIGHTS].sort(() => 0.5 - Math.random());
+  return [shuffled[0], shuffled[1], shuffled[2]];
 }
 
 export function SmartInsightsCard() {
-  const [{ tip, save }, setInsight] = useState(() => pickInsight());
+  // State now holds an array of two tips
+  const [currentInsights, setInsights] = useState(() => pickTwoInsights());
 
   const refresh = useCallback(() => {
-    setInsight(pickInsight());
+    setInsights(pickTwoInsights());
   }, []);
 
   return (
@@ -73,15 +74,22 @@ export function SmartInsightsCard() {
           type="button"
           onClick={refresh}
           className="rounded-full p-2 text-white/70 transition hover:bg-white/10 hover:text-white"
-          aria-label="New tip"
+          aria-label="New tips"
         >
           <RefreshCw className="h-4 w-4" />
         </button>
       </div>
-      <p className="mt-4 text-sm leading-relaxed text-white/90">{tip}</p>
-      <p className="mt-2 text-sm font-semibold text-amber-200/95">
-        Save {formatUsd(save)} more
-      </p>
+
+      <div className="mt-4 space-y-4">
+        {currentInsights.map((insight, index) => (
+          <div key={index} className={index === 0 ? "border-b border-white/10 pb-4" : ""}>
+            <p className="text-sm leading-relaxed text-white/90">{insight.tip}</p>
+            <p className="mt-1 text-xs font-semibold text-amber-200/95">
+              Save {formatUsd(insight.save)} more
+            </p>
+          </div>
+        ))}
+      </div>
     </section>
   );
 }

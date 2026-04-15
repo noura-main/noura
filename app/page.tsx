@@ -61,7 +61,7 @@ export default function Home() {
   const founders = [
     {
       name: "Shreya Nambiar",
-      role: "Product & Vision",
+      role: "Technical Lead",
       contact: "shreya24nambiar@gmail.com",
       blurb:
         "Maya shapes the product direction and makes sure every feature keeps healthy cooking simple and realistic.",
@@ -70,8 +70,8 @@ export default function Home() {
     },
     {
       name: "Aadhira Vivekananad",
-      role: "Culinary Systems",
-      contact: "omar@noura.app",
+      role: "Business Management",
+      contact: "nivikandavel@gmail.com",
       blurb:
         "Omar leads recipe intelligence and ingredient matching so users get quick meal ideas they can trust.",
       image:
@@ -79,7 +79,7 @@ export default function Home() {
     },
     {
       name: "Evelyn Qiao",
-      role: "Community & Support",
+      role: "Community Director",
       contact: "lina@noura.app",
       blurb:
         "Lina connects users with our team and ensures the Noura experience stays warm, inclusive, and helpful.",
@@ -278,8 +278,14 @@ export default function Home() {
                   <a
                     className="rounded-xl bg-white px-4 py-3 font-medium shadow-sm transition hover:bg-[#EAF3E3]"
                   >
-                    Customer Support: +1 (470) 844-2379
+                    Customer Support: +1 (943) 238-0658
                   </a>
+                  <a
+                    className="rounded-xl bg-white px-4 py-3 font-medium shadow-sm transition hover:bg-[#EAF3E3]"
+                  >
+                    Technical Support: +1 (470) 844-2379
+                  </a>
+                  
                 </div>
               </div>
             </div>
@@ -299,7 +305,7 @@ export default function Home() {
               <h2 className="mt-3 text-4xl font-bold leading-[1.05] tracking-tight text-[#0C2F3D] md:text-6xl">
                 Frequently Asked Questions
               </h2>
-              <p className="mt-4 max-w-2xl text-base leading-7 text-[#35515B] md:text-lg">
+              <p className="mt-4 max-w-3xl text-base leading-7 text-[#35515B] md:text-lg">
                 Quick answers about Noura, healthy cooking, and how we can help
                 you in the kitchen.
               </p>

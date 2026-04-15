@@ -4,8 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { ScanLine, X, Utensils, ShoppingBasket } from "lucide-react";
 import { useBudgetTransactions } from "@/lib/context/budget-transactions";
 import type { BudgetTransaction, BudgetTransactionType } from "@/lib/budget/types";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-
+import { useRouter } from "next/navigation";
 
 type Props = {
   open: boolean;
@@ -96,11 +95,17 @@ async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
   } finally {
     e.target.value = "";
   }
-}
-
+} 
+  
   if (!open || !mounted) return null;
 
-  return (
+  const router = useRouter();
+
+  function closeModal(){
+    onClose();
+    router.push('/budget')
+  }
+  return (    
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center p-4"
       style={{ background: "rgba(6,54,67,0.7)", backdropFilter: "blur(8px)" }}
@@ -123,9 +128,7 @@ async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
         <div className="p-6">
           {phase === "idle" && (
             <div className="space-y-6">
-              {/* UPDATED TOGGLE SWITCH */}
               <div className="flex p-1 bg-gray-100 rounded-2xl border border-gray-200">
-                {/* DINING ON THE LEFT */}
                 <button
                   onClick={() => setScanMode("Eating Out")}
                   className={`flex flex-1 items-center justify-center gap-2 py-3 text-sm font-bold rounded-xl transition-all ${
@@ -136,7 +139,6 @@ async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
                   Dining
                 </button>
 
-                {/* GROCERIES ON THE RIGHT (DISABLED) */}
                 <div className="relative flex-1">
                   <button
                     disabled
@@ -189,7 +191,7 @@ async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
                   Scan Another
                 </button>
                 <button
-                  onClick={onClose}
+                  onClick={closeModal}
                   className="w-full py-3 text-sm font-bold bg-[#0D2D35] text-white rounded-xl"
                 >
                   View Budget

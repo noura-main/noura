@@ -90,7 +90,7 @@ export function RecentSpendingSection() {
 
   return (
     <>
-      <section className="budget-print-area flex h-full flex-col rounded-3xl bg-white p-6 shadow-sm">
+      <section className="budget-print-area flex h-full flex-col rounded-3xl bg-white p-6 shadow-sm max-h-128 overflow-y-auto">
         <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-semibold text-[#0d2e38]">Recent Spending</h2>
           <div className="no-print flex flex-wrap gap-2">
