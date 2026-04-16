@@ -71,42 +71,100 @@ export async function POST(req: NextRequest) {
     // Prepend system prompt
     const payloadMessages = [{ role: "system", content: systemPrompt }, ...messages];
 
-    // Call OpenRouter
-    const res = await fetch(OPENROUTER_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: OPENROUTER_MODEL,
-        messages: payloadMessages,
-        temperature: 0.7,
-        max_tokens: 1024,
-      }),
-    });
+    // Quick canned replies for common support questions (avoid external call)
+    const lastUserMsg = messages[messages.length - 1];
+    const lastUserText = String(lastUserMsg?.content ?? "").trim();
+    let assistantContent = "";
 
-    if (!res.ok) {
-      const errBody = await res.text().catch(() => res.statusText);
-      console.error("[assistant] OpenRouter error", res.status, errBody);
-      let friendly = typeof errBody === "string" ? errBody : String(errBody);
-      try {
-        const parsed = JSON.parse(String(errBody));
-        const rawMsg = parsed?.error?.message ?? String(errBody);
-        if (parsed?.error?.code === "rate_limit_exceeded" || /rate limit/i.test(rawMsg)) {
-          const seconds = await extractWaitSeconds(rawMsg);
-          friendly = seconds ? `The AI service is busy. Please wait about ${seconds} second${seconds === 1 ? "" : "s"} and try again.` : `The AI service is busy due to rate limits. Please try again shortly.`;
-        } else {
-          friendly = rawMsg;
-        }
-      } catch {
-        // fall back
-      }
-      return NextResponse.json({ error: `AI service error (${res.status}): ${friendly}` }, { status: 502 });
+    // Robust intent detection for "how to use" variants. Checks the current
+    // user message and previous messages for mentions of Noura or the app so
+    // short/ambiguous queries like "how to use?" are handled correctly.
+    function mentionsNouraInMessages(msgs: any[]) {
+      return msgs.some((m) => {
+        const s = String(m?.content ?? "").toLowerCase();
+        return /\bnoura\b/.test(s) || /\bthe app\b/.test(s) || /\bthis app\b/.test(s);
+      });
     }
 
-    const data = await res.json().catch(() => ({}));
-    const assistantContent = data?.choices?.[0]?.message?.content ?? data?.choices?.[0]?.text ?? "";
+    function isHowToUseQuery(msgs: any[], text: string) {
+      const t = String(text ?? "").toLowerCase();
+      const explicit = [
+        /how do i use noura/,
+        /how to use noura/,
+        /how can i use noura/,
+        /how do i use the app/,
+        /how to use the app/,
+        /how does noura work/,
+        /how does the app work/,
+        /what does noura do/,
+        /what can noura do/,
+        /getting started/,
+        /get started/,
+      ];
+      if (explicit.some((rx) => rx.test(t))) return true;
+
+      // Generic patterns require a mention of the app/Noura somewhere in the
+      // conversation to avoid false positives.
+      const generic = /\b(how to|how do i|how can i|how|use|using|start|started|guide|usage|what can)\b/;
+      if (generic.test(t)) {
+        if (/\bnoura\b/.test(t) || /\bthe app\b/.test(t) || mentionsNouraInMessages(msgs)) return true;
+      }
+
+      // Short ambiguous queries rely entirely on context
+      if (/^how to use\??$/.test(t) || /^how do i use\??$/.test(t) || /^how to\??$/.test(t)) {
+        return mentionsNouraInMessages(msgs);
+      }
+
+      return false;
+    }
+
+    if (isHowToUseQuery(messages, lastUserText)) {
+      assistantContent = `Here’s how to use Noura:
+
+1) Input your ingredients: add items manually or scan receipts so Noura knows what’s in your kitchen.
+2) Set preferences and restrictions: tell Noura dietary goals, allergies, or taste preferences for personalized suggestions.
+3) Generate recipes or meal plans: use the recipe generator or meal planner to get tailored ideas and smart swaps based on your inventory and goals.
+4) Save and cook: adjust quantities, save recipes, or add items to your meal plan; Noura will keep nutrition and shopping suggestions in sync.
+
+Tip: Start by adding a few common staples (eggs, rice, spinach) and generate a quick plan: you can refine preferences later.`;
+    } else {
+      // Call OpenRouter
+      const res = await fetch(OPENROUTER_API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: OPENROUTER_MODEL,
+          messages: payloadMessages,
+          temperature: 0.7,
+          max_tokens: 1024,
+        }),
+      });
+
+      if (!res.ok) {
+        const errBody = await res.text().catch(() => res.statusText);
+        console.error("[assistant] OpenRouter error", res.status, errBody);
+        let friendly = typeof errBody === "string" ? errBody : String(errBody);
+        try {
+          const parsed = JSON.parse(String(errBody));
+          const rawMsg = parsed?.error?.message ?? String(errBody);
+          if (parsed?.error?.code === "rate_limit_exceeded" || /rate limit/i.test(rawMsg)) {
+            const seconds = await extractWaitSeconds(rawMsg);
+            friendly = seconds ? `The AI service is busy. Please wait about ${seconds} second${seconds === 1 ? "" : "s"} and try again.` : `The AI service is busy due to rate limits. Please try again shortly.`;
+          } else {
+            friendly = rawMsg;
+          }
+        } catch {
+          // fall back
+        }
+        return NextResponse.json({ error: `AI service error (${res.status}): ${friendly}` }, { status: 502 });
+      }
+
+      const data = await res.json().catch(() => ({}));
+      assistantContent = data?.choices?.[0]?.message?.content ?? data?.choices?.[0]?.text ?? "";
+    }
 
     // Persist chat session + messages if user provided
     let createdSessionId = sessionId;

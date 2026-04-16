@@ -66,7 +66,7 @@ export default function Home() {
       blurb:
         "Shreya oversees Noura’s development, specializing in turning complex concepts into efficient, user-friendly technical solutions. With a deep interest in AI and a knack for thriving in fast-paced environments, she ensures the platform is built with high-quality, functional design at its core.",
       image:
-        "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=800&q=80",
+        "/general/founders/shreya.png",
     },
     {
       name: "Aadhira Vivekananad",
@@ -75,7 +75,7 @@ export default function Home() {
       blurb:
         "Aadhira spearheads market research, financial strategy, and product development at Noura. With a background in building tech-driven solutions, she ensures Noura’s features are scalable, personalized, and rooted in real-world user needs.",
       image:
-        "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=800&q=80",
+      "/general/founders/aadhira.png"
     },
     {
       name: "Evelyn Qiao",
@@ -84,7 +84,7 @@ export default function Home() {
       blurb:
         "Evelyn focuses on community engagement and expanding Noura’s reach through a data-driven, problem-solving lens. Combining her background in mathematics and programming with a passion for social impact, she ensures the platform addresses real-world needs and drives lasting change within the community.",
       image:
-        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=800&q=80",
+      "/general/founders/evelyn.png"
     },
   ];
 
@@ -214,6 +214,41 @@ export default function Home() {
                   </p>
                 </div>
               </div>
+            </div>
+          </section>
+          
+          <section
+            id="howto"
+            className="relative overflow-hidden rounded-[2.25rem] bg-white p-6 md:p-10"
+          >
+            <div className="relative">
+              <p className="inline-flex items-center rounded-full bg-[#0C5D6E]/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[#0C5D6E]">
+                How to use
+              </p>
+              <h2 className="mt-3 text-4xl font-bold leading-[1.05] tracking-tight text-[#0C2F3D] md:text-6xl">
+                Get Started in 3 Simple Steps
+              </h2>
+
+              <div className="mt-6 grid gap-4 md:grid-cols-3">
+                <article className="rounded-[1.6rem] border border-[#e6eef0] p-5">
+                  <h3 className="text-lg font-semibold text-[#0C2F3D]">1. Add what you have</h3>
+                  <p className="mt-2 text-sm text-[#35515B]">Quickly add pantry items or scan receipts so Noura knows what’s in your kitchen. Input any preferences you have to make youre recipes perfect for you!</p>
+                </article>
+
+                <article className="rounded-[1.6rem] border border-[#e6eef0] p-5">
+                  <h3 className="text-lg font-semibold text-[#0C2F3D]">2. Generate ideas</h3>
+                  <p className="mt-2 text-sm text-[#35515B]">Use the meal planner or recipe generator to get tailored meal suggestions and swaps based on your inventory and goals.</p>
+                </article>
+
+                <article className="rounded-[1.6rem] border border-[#e6eef0] p-5">
+                  <h3 className="text-lg font-semibold text-[#0C2F3D]">3. Save & cook</h3>
+                  <p className="mt-2 text-sm text-[#35515B]">Adjust quantities, save recipes or add to your meal plan, Noura will keep nutrition and shopping suggestions in sync.</p>
+                </article>
+              </div>
+
+              <p className="mt-6 max-w-3xl text-base leading-7 text-[#35515B] md:text-lg">
+                Tip: Try adding a few common items first (eggs, rice, spinach) and generate a quick plan — you can always refine preferences and dietary restrictions for more personalized results.
+              </p>
             </div>
           </section>
 
