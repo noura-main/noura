@@ -1,3 +1,4 @@
+import { Analytics } from '@vercel/analytics/next';
 import type { Metadata } from "next";
 import { Raleway, Inconsolata } from 'next/font/google';
 import { UserDataProvider } from "@/lib/context/user-data";
@@ -31,6 +32,7 @@ export default function RootLayout({
           <ReceiptScanProvider>{children}</ReceiptScanProvider>
         </BudgetTransactionsProvider>
         </UserDataProvider>
+        <Analytics />
       </body>
     </html>
   );
