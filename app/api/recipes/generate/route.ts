@@ -296,11 +296,29 @@ export async function POST(req: NextRequest) {
       }
       if (!res.ok) {
         const errBody = await res.text();
-        console.error(`[generate:${label}] Groq error`, res.status, errBody);
-        let friendlyMsg: string;
-        try { friendlyMsg = (JSON.parse(errBody) as { error?: { message?: string } })?.error?.message ?? errBody; }
-        catch { friendlyMsg = errBody; }
-        throw new Error(`AI service error (${res.status}): ${friendlyMsg}`);
+          console.error(`[generate:${label}] Groq error`, res.status, errBody);
+          let friendlyMsg: string;
+          try {
+            const parsed = JSON.parse(errBody) as { error?: { message?: string; code?: string } };
+            const rawMsg = parsed?.error?.message ?? errBody;
+
+            // If this is a rate-limit error from Groq, extract the suggested wait time
+            // and present a concise, user-friendly message that includes how long to wait.
+            if (parsed?.error?.code === "rate_limit_exceeded" || /rate limit/i.test(rawMsg)) {
+              const m = rawMsg.match(/Please try again in ([0-9.]+)s/i);
+              const seconds = m ? Math.ceil(Number(m[1])) : null;
+              if (seconds && Number.isFinite(seconds)) {
+                friendlyMsg = `The AI service is temporarily busy. Please wait about ${seconds} second${seconds === 1 ? "" : "s"} and try again.`;
+              } else {
+                friendlyMsg = `The AI service is temporarily busy due to rate limits. Please try again shortly.`;
+              }
+            } else {
+              friendlyMsg = rawMsg;
+            }
+          } catch {
+            friendlyMsg = errBody;
+          }
+          throw new Error(`AI service error (${res.status}): ${friendlyMsg}`);
       }
       const data = await res.json();
       return data.choices?.[0]?.message?.content ?? "{}";

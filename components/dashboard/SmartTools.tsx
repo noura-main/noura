@@ -7,6 +7,8 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import FallbackImage from "@/components/ui/FallbackImage";
 import HealthTrendsModal from "@/components/dashboard/HealthTrendsModal";
 import IngredientSwapModal from "@/components/recipes/IngredientSwapModal";
+import AssistantChatModal from "@/components/dashboard/AssistantChatModal";
+import { ChatProvider } from "@/lib/context/chat";
 import { Target, X } from "lucide-react";
 
 function SavedTimestamp({ ts }: { ts: number }) {
@@ -212,7 +214,8 @@ export function SmartTools() {
   }, [nutritionGoals]);
 
   return (
-    <>
+    <ChatProvider>
+      <>
       <div className="flex flex-wrap gap-3 justify-center">
         {SMART_TOOLS.map(({ label, icon }, index) => {
           const isActive = index === activeIndex;
@@ -248,6 +251,8 @@ export function SmartTools() {
         <HealthTrendsModal onClose={() => setOpenTool(null)} />
       ) : openTool === "Smart Swaps" ? (
         <IngredientSwapModal onClose={() => setOpenTool(null)} />
+      ) : openTool === "AI Assistant" ? (
+        <AssistantChatModal onClose={() => setOpenTool(null)} />
       ) : openTool ? (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -482,7 +487,8 @@ export function SmartTools() {
           </div>
         </div>
       ) : null}
-    </>
+      </>
+    </ChatProvider>
   );
 }
 

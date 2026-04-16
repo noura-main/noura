@@ -85,8 +85,27 @@ async function callGroq(ingredient: string, model: string, apiKey: string): Prom
   });
 
   if (!res.ok) {
-    const err = await res.text().catch(() => res.statusText);
-    throw new Error(`Groq ${model} returned ${res.status}: ${err}`);
+    const errBody = await res.text().catch(() => res.statusText);
+    console.error(`[ingredient-swap] Groq error ${res.status}`, errBody);
+    let friendlyMsg = typeof errBody === "string" ? errBody : String(errBody);
+    try {
+      const parsed = JSON.parse(String(errBody)) as { error?: { message?: string; code?: string } };
+      const rawMsg = parsed?.error?.message ?? String(errBody);
+      if (parsed?.error?.code === "rate_limit_exceeded" || /rate limit/i.test(rawMsg)) {
+        const m = rawMsg.match(/Please try again in ([0-9.]+)s/i);
+        const seconds = m ? Math.ceil(Number(m[1])) : null;
+        if (seconds && Number.isFinite(seconds)) {
+          friendlyMsg = `The AI service is temporarily busy. Please wait about ${seconds} second${seconds === 1 ? "" : "s"} and try again.`;
+        } else {
+          friendlyMsg = `The AI service is temporarily busy due to rate limits. Please try again shortly.`;
+        }
+      } else {
+        friendlyMsg = rawMsg;
+      }
+    } catch {
+      // fall back to raw text
+    }
+    throw new Error(`AI service error (${res.status}): ${friendlyMsg}`);
   }
 
   const json = await res.json();

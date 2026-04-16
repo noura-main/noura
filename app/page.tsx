@@ -64,7 +64,7 @@ export default function Home() {
       role: "Technical Lead",
       contact: "shreya24nambiar@gmail.com",
       blurb:
-        "Maya shapes the product direction and makes sure every feature keeps healthy cooking simple and realistic.",
+        "Shreya oversees Noura’s development, specializing in turning complex concepts into efficient, user-friendly technical solutions. With a deep interest in AI and a knack for thriving in fast-paced environments, she ensures the platform is built with high-quality, functional design at its core.",
       image:
         "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=800&q=80",
     },
@@ -73,16 +73,16 @@ export default function Home() {
       role: "Business Management",
       contact: "nivikandavel@gmail.com",
       blurb:
-        "Omar leads recipe intelligence and ingredient matching so users get quick meal ideas they can trust.",
+        "Aadhira spearheads market research, financial strategy, and product development at Noura. With a background in building tech-driven solutions, she ensures Noura’s features are scalable, personalized, and rooted in real-world user needs.",
       image:
         "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=800&q=80",
     },
     {
       name: "Evelyn Qiao",
       role: "Community Director",
-      contact: "lina@noura.app",
+      contact: "evelyn.y.qiao@gmail.com",
       blurb:
-        "Lina connects users with our team and ensures the Noura experience stays warm, inclusive, and helpful.",
+        "Evelyn focuses on community engagement and expanding Noura’s reach through a data-driven, problem-solving lens. Combining her background in mathematics and programming with a passion for social impact, she ensures the platform addresses real-world needs and drives lasting change within the community.",
       image:
         "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=800&q=80",
     },

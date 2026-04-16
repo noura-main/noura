@@ -11,6 +11,7 @@ import {
   UserRound,
   LogOut,
   BabyIcon,
+  NotepadText,
 } from "lucide-react";
 import FallbackImage from "@/components/ui/FallbackImage";
 import Link from "next/link";
@@ -64,6 +65,15 @@ export function NavbarUser() {
       </nav>
 
       <div className="mt-auto space-y-2">
+        <Link
+          href="https://forms.gle/Ep2xeZpsmG5RXxTW9"
+          target="_blank" 
+          className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-md font-semibold text-[#8a8a8a] hover:text-white hover:bg-[#245e6e] target-blank"
+        >
+          <NotepadText className="h-4 w-4" />
+          Feedback
+        </Link>
+
         <Link
           href="https://noura-play-grow.base44.app/"
           target="_blank" 
