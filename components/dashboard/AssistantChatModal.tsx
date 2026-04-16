@@ -5,8 +5,6 @@ import { X } from "lucide-react";
 import { useUserData } from "@/lib/context/user-data";
 import { useChat, ChatMsg } from "@/lib/context/chat";
 import FallbackImage from "@/components/ui/FallbackImage";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 
 type Msg = ChatMsg;
 
@@ -119,11 +117,7 @@ export default function AssistantChatModal({ onClose }: { onClose: () => void })
               <div key={i} className={`flex ${m.role === 'assistant' ? 'justify-start' : 'justify-end'}`}>
                 <div className={`max-w-[78%] rounded-2xl px-4 py-3 ${m.role === 'assistant' ? 'bg-[#f0f6f6] text-[#0d2e38]' : 'bg-[#063643] text-white'}`}>
                   <div className="text-sm whitespace-pre-wrap">
-                    {m.role === 'assistant' ? (
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
-                    ) : (
-                      <span>{m.content}</span>
-                    )}
+                    <span>{m.content}</span>
                   </div>
                   <div className="text-[10px] mt-1 text-[#6a7f87]">{m.created_at ? new Date(m.created_at).toLocaleTimeString() : ''}</div>
                 </div>
