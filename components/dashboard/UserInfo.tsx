@@ -16,8 +16,13 @@ export default function UserInfo({ field, className }: UserInfoProps) {
 
   const value =
     field === 'full_name'
-      ? (data.full_name?.split(' ')[0] ?? 'Not found')
-      : (data.email ?? 'Not found');
+      ? (
+          data.first_name ??
+          data.full_name?.split(' ')[0] ??
+          (data.email ? data.email.split('@')[0] : null) ??
+          'there'
+        )
+      : (data.email ?? ' ');
 
   return <span className={className}>{value}</span>;
 }

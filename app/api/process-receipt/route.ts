@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import Groq from "groq-sdk";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -9,10 +8,9 @@ const supabase = createClient(
 
 export async function POST(req: NextRequest) {
   try {
-    const apiKey = process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROK_API_KEY;
-    if (!apiKey) return NextResponse.json({ error: "No Groq Key" }, { status: 500 });
+    const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+    if (!apiKey) return NextResponse.json({ error: "No Gemini Key" }, { status: 500 });
 
-    const groq = new Groq({ apiKey });
     const formData = await req.formData();
     const file = formData.get("file") as File;
     const scanMode = formData.get("scanMode") as string;
@@ -21,27 +19,45 @@ export async function POST(req: NextRequest) {
     const bytes = await file.arrayBuffer();
     const base64Image = Buffer.from(bytes).toString("base64");
 
-    const systemPrompt = scanMode === "Eating Out" 
+    const systemPrompt = scanMode === "Eating Out"
       ? `Extract restaurant total. Return JSON: {"transactions": [{"location": "Name", "items": ["Dining"], "amount": 0.00, "date": "YYYY-MM-DD", "type": "Eating Out"}]}`
       : `Extract individual grocery food items. Return JSON: {"transactions": [{"location": "Store", "items": ["Item"], "amount": 0.00, "date": "YYYY-MM-DD", "type": "Groceries"}]}`;
 
-    const chatCompletion = await groq.chat.completions.create({
-      model: "meta-llama/llama-4-scout-17b-16e-instruct",
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "text", text: systemPrompt },
-            { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64Image}` } },
-          ],
+    const GEMINI_API_BASE = process.env.NEXT_PUBLIC_GEMINI_API_URL ?? "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent";
+    const geminiUrl = new URL(GEMINI_API_BASE);
+    geminiUrl.searchParams.set("key", apiKey);
+
+    const mimeType = file.type || "image/jpeg";
+
+    const res = await fetch(geminiUrl.toString(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: systemPrompt },
+              { inlineData: { mimeType, data: base64Image } },
+            ],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.1,
+          maxOutputTokens: 1024,
+          responseMimeType: "application/json",
         },
-      ],
-      response_format: { type: "json_object" },
-      temperature: 0.1,
+      }),
     });
 
-    const rawContent = chatCompletion.choices[0].message.content || "{}";
-    const parsedData = JSON.parse(rawContent);
+    if (!res.ok) {
+      const errText = await res.text().catch(() => res.statusText);
+      throw new Error(`Gemini API error: ${res.status} ${String(errText)}`);
+    }
+
+    const data = await res.json();
+    const rawContent = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
+    const parsedData = JSON.parse(String(rawContent));
     const extracted = parsedData.transactions || (Array.isArray(parsedData) ? parsedData : [parsedData]);
 
     // Save to Supabase

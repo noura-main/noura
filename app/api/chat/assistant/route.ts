@@ -54,12 +54,14 @@ export async function POST(req: NextRequest) {
     try {
       if (userId) {
         const [{ data: profile }, { data: dailyLogs }, { data: goals }] = await Promise.all([
-          supabase.from("profiles").select("full_name,avatar_url").eq("id", userId).maybeSingle(),
+          supabase.from("profiles").select("first_name,last_name,full_name,avatar_url").eq("id", userId).maybeSingle(),
           supabase.from("daily_logs").select("calories,protein,fat_g,carbs_g").eq("user_id", userId).order("date", { ascending: false }).limit(1).maybeSingle(),
           supabase.from("user_nutrition_goals").select("calories,protein_g,carbs_g,fat_g").eq("user_id", userId).maybeSingle(),
         ]);
 
-        const name = profile?.full_name ?? null;
+        const name = profile?.first_name || profile?.last_name
+          ? `${(profile?.first_name ?? "").trim()} ${(profile?.last_name ?? "").trim()}`.trim()
+          : profile?.full_name ?? null;
         const today = dailyLogs?.calories != null ? `They've logged ${dailyLogs.calories} kcal, ${dailyLogs.protein ?? 0} g protein today.` : "No nutrition logged yet today.";
         const goalLine = goals?.calories ? `Their daily targets: ${goals.calories} kcal, ${goals.protein_g ?? "—"} g protein, ${goals.carbs_g ?? "—"} g carbs, ${goals.fat_g ?? "—"} g fat.` : "No nutrition targets set.";
         systemPrompt = `You are a friendly nutrition coach for ${name ?? "this user"}. ${today} ${goalLine} Answer as a helpful coach and relate suggestions to the user's goals when appropriate.`;

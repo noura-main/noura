@@ -411,7 +411,6 @@ function IngredientCard({
 }
 
 export default function KitchenPantry() {
-  const { openReceiptScan } = useReceiptScan();
   const [ingredients, setIngredients] = useState<Ingredient[]>(INITIAL_INGREDIENTS);
   const [search, setSearch] = useState("");
   const [loadingName, setLoadingName] = useState<string | null>(null);
@@ -780,18 +779,7 @@ export default function KitchenPantry() {
         )}
       </div>
 
-      <div className="flex items-center gap-4">
-        <div className="h-px flex-1 bg-[#0d2e38]" />
-        <button
-          type="button"
-          onClick={() => openReceiptScan()}
-          className="flex items-center gap-2 rounded-full bg-[#063643] px-6 py-2 text-sm font-semibold text-white hover:bg-[#0d3a49] transition"
-        >
-          <ScanLine className="h-4 w-4" />
-          Scan Receipt
-        </button>
-        <div className="h-px flex-1 bg-[#0d2e38]" />
-      </div>
+      <div className="h-px flex-1 bg-[#0d2e38]"/>
 
       <div className="relative min-h-[120px]">
         <div className="space-y-6 pb-20">

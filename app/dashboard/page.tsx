@@ -24,12 +24,14 @@ import {
 import NearbyFoodMapLoader from "@/components/dashboard/NearbyFoodMapLoader";
 import { SmartTools } from "@/components/dashboard/SmartTools";
 import FallbackImage from "@/components/ui/FallbackImage";
+import DashboardIntroModal from "@/components/dashboard/DashboardIntroModal";
 
 export default function DashboardPage() {
   const router = useRouter();
   
   return (
     <div className="h-screen bg-[#f3f4f6] p-3 text-[#0d2e38]">
+      <DashboardIntroModal />
       <div className="mx-auto grid h-full max-w-[1500px] grid-cols-1 gap-2 lg:grid-cols-[220px_minmax(0,1fr)_300px]">
         <NavbarUser />
 

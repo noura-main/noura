@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { ChevronLeft, ChevronRight, Plus, ChevronDown, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, ChevronDown, Sparkles, RefreshCw } from "lucide-react";
 import FallbackImage from "@/components/ui/FallbackImage";
 import type { MealType, Recipe, GeneratedRecipes } from "@/lib/recipes/types";
 import AddToMealPlanModal from "@/components/recipes/AddToMealPlanModal";
@@ -29,11 +29,20 @@ interface RecipeCarouselProps {
   generatedRecipes?: GeneratedRecipes | null;
   /** Renders a loading overlay while generation is in progress. */
   isLoading?: boolean;
+  /** Optional: regenerate a whole meal (replaces recipes) */
+  onRegenerateMeal?: (meal: MealType) => void | Promise<void>;
+  /** Optional: generate one additional recipe for a meal (appends) */
+  onGenerateMore?: (meal: MealType) => void | Promise<void>;
+  /** Optional: regenerate a single recipe card (meal + index) */
+  onRegenerateRecipe?: (meal: MealType, index: number) => void | Promise<void>;
 }
 
 export default function RecipeCarousel({
   generatedRecipes,
   isLoading = false,
+  onRegenerateMeal,
+  onGenerateMore,
+  onRegenerateRecipe,
 }: RecipeCarouselProps) {
   const [mealType, setMealType] = useState<MealType>("breakfast");
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -178,7 +187,7 @@ export default function RecipeCarousel({
               onClick={() => setActiveIndex(index)}
             >
               <div
-                className="flex flex-col overflow-hidden rounded-3xl shadow-xl"
+                  className="relative flex flex-col overflow-hidden rounded-3xl shadow-xl"
                 style={{
                   background: isActive ? "#ffffff" : "#f0f3f5",
                   boxShadow: isActive
@@ -186,6 +195,21 @@ export default function RecipeCarousel({
                     : "0 8px 24px rgba(0,0,0,0.1)",
                 }}
               >
+                  {/* Per-card swap button (top-right) */}
+                  {onRegenerateRecipe && (
+                    <div className="absolute right-3 top-3 z-40">
+                      <button
+                        title="Swap this recipe"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onRegenerateRecipe(mealType, index);
+                        }}
+                        className="flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-[#063643] shadow hover:bg-white"
+                      >
+                        <RefreshCw size={14} strokeWidth={2.2} />
+                      </button>
+                    </div>
+                  )}
                 {/* Food image */}
                 <div className="relative h-[175px] w-full overflow-hidden bg-gray-100">
                   <div className="absolute inset-0 h-full w-full">

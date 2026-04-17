@@ -247,14 +247,21 @@ export default function AccountSettings() {
       // Load profile row
       const { data: profile } = await supabase
         .from("profiles")
-        .select("full_name, phone, avatar_url")
+        .select("first_name,last_name,full_name,phone,avatar_url")
         .eq("id", user.id)
         .maybeSingle();
 
       if (profile) {
-        const parts = (profile.full_name ?? "").split(" ");
-        setFirstName(parts[0] ?? "");
-        setLastName(parts.slice(1).join(" ") ?? "");
+        const first = profile.first_name ?? null;
+        const last = profile.last_name ?? null;
+        if (first || last) {
+          setFirstName(first ?? "");
+          setLastName(last ?? "");
+        } else {
+          const parts = (profile.full_name ?? "").split(" ");
+          setFirstName(parts[0] ?? "");
+          setLastName(parts.slice(1).join(" ") ?? "");
+        }
         setPhone(profile.phone ?? "");
         setAvatarUrl(profile.avatar_url ?? null);
       }
@@ -322,12 +329,13 @@ export default function AccountSettings() {
     if (!supabase || !userId) return;
     setSaving(true);
     try {
-      const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
+      const f = firstName.trim();
+      const l = lastName.trim();
 
-      // Update profile row
+      // Update profile row (store first + last separately)
       const { error: profileError } = await supabase
         .from("profiles")
-        .update({ full_name: fullName, phone: phone.trim() })
+        .update({ first_name: f || null, last_name: l || null, phone: phone.trim() })
         .eq("id", userId);
       if (profileError) throw profileError;
 

@@ -29,6 +29,41 @@ function todayString(): string {
   return new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD
 }
 
+function stringifyIngredient(item: any): string {
+  if (item == null) return "";
+  if (typeof item === "string") return item.trim();
+  if (typeof item === "number" || typeof item === "bigint") return String(item);
+  if (Array.isArray(item)) return item.map((it) => stringifyIngredient(it)).filter(Boolean).join(" ");
+  if (typeof item === "object") {
+    const nameKeys = ["name", "ingredient", "item", "label", "title", "text"];
+    const qtyKeys = ["quantity", "qty", "amount", "count", "number", "num"];
+    const unitKeys = ["unit", "quantity_unit", "u", "measure", "measurement", "measure_unit"];
+
+    const name = nameKeys.map((k) => (k in item ? item[k] : undefined)).find((v) => v != null);
+    const qty = qtyKeys.map((k) => (k in item ? item[k] : undefined)).find((v) => v != null);
+    const unit = unitKeys.map((k) => (k in item ? item[k] : undefined)).find((v) => v != null);
+
+    const parts: string[] = [];
+    if (qty != null && String(qty).trim() !== "") parts.push(String(qty).trim());
+    if (unit != null && String(unit).trim() !== "") parts.push(String(unit).trim());
+    if (name != null) {
+      if (typeof name === "string") parts.push(name.trim());
+      else parts.push(stringifyIngredient(name));
+    } else {
+      const fallback = Object.values(item).find((v) => typeof v === "string" && v.trim().length > 0);
+      if (fallback) parts.push(String(fallback).trim());
+    }
+    const joined = parts.join(" ").replace(/\s+/g, " ").trim();
+    if (joined) return joined;
+
+    const vals = Object.values(item)
+      .map((v) => (typeof v === "string" || typeof v === "number" ? String(v) : ""))
+      .filter(Boolean);
+    return vals.join(" ").trim();
+  }
+  return String(item);
+}
+
 export default function AddToMealPlanModal({ recipe, mealType, onClose }: Props) {
   const today = todayString();
   const [date, setDate] = useState(today);
@@ -68,7 +103,7 @@ export default function AddToMealPlanModal({ recipe, mealType, onClose }: Props)
         meal_type: selectedMeal,
         recipe_name: recipe.name,
         description: recipe.description ?? "",
-        ingredients: recipe.ingredients ?? [],
+        ingredients: (recipe.ingredients ?? []).map(stringifyIngredient),
         instructions: recipe.instructions ?? "",
         calories: recipe.calories ?? null,
         cook_time: recipe.prepTime ?? null,

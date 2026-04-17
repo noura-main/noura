@@ -266,8 +266,31 @@ export function UserStatBar() {
       });
 
       // Deduct used ingredients from pantry
+      function stringifyIngredient(item: unknown): string {
+        if (item == null) return "";
+        if (typeof item === "string") return item;
+        if (typeof item === "number") return String(item);
+        if (Array.isArray(item)) return item.map(stringifyIngredient).filter(Boolean).join(", ");
+        if (typeof item === "object") {
+          const obj = item as Record<string, unknown>;
+          const prefer = ["name", "ingredient", "item", "text", "label", "display"];
+          for (const k of prefer) {
+            if (obj[k]) return String(obj[k]);
+          }
+          const qty = obj["quantity"] ?? obj["qty"] ?? obj["amount"] ?? null;
+          const unit = obj["unit"] ?? obj["quantity_unit"] ?? "";
+          const nm = obj["name"] ?? obj["ingredient"] ?? obj["item"] ?? null;
+          if (nm) return `${qty ?? ""}${unit ? ` ${unit}` : ""} ${String(nm)}`.trim();
+          const vals = Object.values(obj)
+            .filter((v) => v != null)
+            .map((v) => (typeof v === "object" ? JSON.stringify(v) : String(v)));
+          return vals.join(" ");
+        }
+        return String(item);
+      }
+
       const snackIngredients: string[] = Array.isArray(freshSnack?.ingredients)
-        ? (freshSnack.ingredients as unknown[]).map(String).filter(Boolean)
+        ? (freshSnack.ingredients as unknown[]).map(stringifyIngredient).map((s) => s.trim()).filter(Boolean)
         : [];
       await deductIngredientsFromPantry(supabase, user.id, snackIngredients);
 
@@ -309,7 +332,7 @@ export function UserStatBar() {
           <header className="flex items-start justify-between border-b border-[#edf1f4] pb-4">
             <div>
               <p className="text-2xl font-semibold">
-                Hello, <UserInfo field="full_name" /> !!
+                Hello <UserInfo field="full_name" /> !!
               </p>
               <p className="text-sm text-[#6a7f87]">
                 <UserInfo field="email" />

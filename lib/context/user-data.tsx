@@ -5,6 +5,8 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 interface UserData {
   full_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
   email: string | null;
   avatar_url: string | null;
   calories: number;
@@ -30,6 +32,8 @@ interface UserData {
 
 const defaultData: Omit<UserData, "refresh"> = {
   full_name: null,
+  first_name: null,
+  last_name: null,
   email: null,
   avatar_url: null,
   calories: 0,
@@ -81,7 +85,7 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
 
         const profileRes = await supabase
           .from("profiles")
-          .select("full_name, avatar_url")
+          .select("first_name,last_name,full_name,avatar_url")
           .eq("id", user.id)
           .single();
 
@@ -147,8 +151,15 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
           };
         }
 
+        const p = profileRes.data ?? {};
+        const first = p.first_name ?? null;
+        const last = p.last_name ?? null;
+        const computedFull = first || last ? `${(first ?? "").trim()} ${(last ?? "").trim()}`.trim() : (p.full_name ?? null);
+
         setData({
-          full_name: profileRes.data?.full_name ?? null,
+          full_name: computedFull,
+          first_name: first,
+          last_name: last,
           email: user.email ?? null,
           avatar_url: profileRes.data?.avatar_url ?? null,
           calories: dailyData?.calories ?? 0,

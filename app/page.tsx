@@ -62,7 +62,6 @@ export default function Home() {
     {
       name: "Shreya Nambiar",
       role: "Technical Lead",
-      contact: "shreya24nambiar@gmail.com",
       blurb:
         "Shreya oversees Noura’s development, specializing in turning complex concepts into efficient, user-friendly technical solutions. With a deep interest in AI and a knack for thriving in fast-paced environments, she ensures the platform is built with high-quality, functional design at its core.",
       image:
@@ -71,7 +70,6 @@ export default function Home() {
     {
       name: "Aadhira Vivekananad",
       role: "Business Management",
-      contact: "nivikandavel@gmail.com",
       blurb:
         "Aadhira spearheads market research, financial strategy, and product development at Noura. With a background in building tech-driven solutions, she ensures Noura’s features are scalable, personalized, and rooted in real-world user needs.",
       image:
@@ -80,7 +78,6 @@ export default function Home() {
     {
       name: "Evelyn Qiao",
       role: "Community Director",
-      contact: "evelyn.y.qiao@gmail.com",
       blurb:
         "Evelyn focuses on community engagement and expanding Noura’s reach through a data-driven, problem-solving lens. Combining her background in mathematics and programming with a passion for social impact, she ensures the platform addresses real-world needs and drives lasting change within the community.",
       image:
@@ -246,8 +243,8 @@ export default function Home() {
                 </article>
               </div>
 
-              <p className="mt-6 max-w-3xl text-base leading-7 text-[#35515B] md:text-lg">
-                Tip: Try adding a few common items first (eggs, rice, spinach) and generate a quick plan — you can always refine preferences and dietary restrictions for more personalized results.
+              <p className="mt-6 max-w-6xl text-base leading-7 text-[#35515B] md:text-sm">
+                Tip: Try adding a few common items first (eggs, rice, spinach) and generate a quick plan. You can always refine preferences and dietary restrictions for more personalized results!
               </p>
             </div>
           </section>
@@ -288,12 +285,6 @@ export default function Home() {
                     </div>
                     <h3 className="mt-4 text-xl font-semibold">{founder.name}</h3>
                     <p className="text-sm text-[#CFE8D0]">{founder.role}</p>
-                    <a
-                      href={`mailto:${founder.contact}`}
-                      className="mt-2 block text-sm text-white/90 underline decoration-[#93C66A]"
-                    >
-                      {founder.contact}
-                    </a>
                     <p className="mt-3 text-sm leading-6 text-white/85">
                       {founder.blurb}
                     </p>
@@ -311,14 +302,18 @@ export default function Home() {
                     General Help: outreach.noura@gmail.com
                   </a>
                   <a
+                    href="https://www.instagram.com/try_noura.ai?igsh=MTlwOG9yOGdubG94cw=="
+                    target="_blank"
                     className="rounded-xl bg-white px-4 py-3 font-medium shadow-sm transition hover:bg-[#EAF3E3]"
                   >
-                    Customer Support: +1 (943) 238-0658
+                    Instagram: noura.ai
                   </a>
                   <a
+                    href="https://www.linkedin.com/company/getnoura/about/?viewAsMember=true"
+                    target="_blank"
                     className="rounded-xl bg-white px-4 py-3 font-medium shadow-sm transition hover:bg-[#EAF3E3]"
                   >
-                    Technical Support: +1 (470) 844-2379
+                    Linkeden: Noura
                   </a>
                   
                 </div>

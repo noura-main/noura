@@ -11,9 +11,9 @@ export default function SignUpPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [fullName, setFullName] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
-  const [dateOfBirth, setDateOfBirth] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showSignupPassword, setShowSignupPassword] = useState(false);
@@ -35,15 +35,12 @@ export default function SignUpPage() {
       setLoading(false);
       return;
     }
+    const meta: Record<string, unknown> = { first_name: firstName, last_name: lastName };
+
     const { error: signUpError } = await supabase.auth.signUp({
       email: signupEmail,
       password: signupPassword,
-      options: {
-        data: {
-          full_name: fullName,
-          date_of_birth: dateOfBirth,
-        },
-      },
+      options: { data: meta },
     });
     setLoading(false);
     if (signUpError) {
@@ -59,30 +56,36 @@ export default function SignUpPage() {
         Sign up
       </h1>
       <form onSubmit={handleSignup} className="mt-8 space-y-4">
-        <input
-          type="text"
-          autoComplete="name"
-          required
-          placeholder="Full Name"
-          value={fullName}
-          onChange={(e) => setFullName(e.target.value)}
-          className="w-full rounded-full border border-transparent bg-[#f0f2f4] py-3.5 px-4 text-[#0C2F3D] outline-none placeholder:text-[#8a9a9e] focus:border-[#0C5D6E]/30 focus:bg-white"
-        />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <input
+            type="text"
+            autoComplete="given-name"
+              required
+              placeholder="First name *"
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            className="w-full rounded-full border border-transparent bg-[#f0f2f4] py-3.5 px-4 text-[#0C2F3D] outline-none placeholder:text-[#8a9a9e] focus:border-[#0C5D6E]/30 focus:bg-white"
+          />
+          <input
+            type="text"
+            autoComplete="family-name"
+              required
+              placeholder="Last name *"
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            className="w-full rounded-full border border-transparent bg-[#f0f2f4] py-3.5 px-4 text-[#0C2F3D] outline-none placeholder:text-[#8a9a9e] focus:border-[#0C5D6E]/30 focus:bg-white"
+          />
+        </div>
         <input
           type="email"
           autoComplete="email"
           required
-          placeholder="Email Address"
+          placeholder="Email Address *"
           value={signupEmail}
           onChange={(e) => setSignupEmail(e.target.value)}
           className="w-full rounded-full border border-transparent bg-[#f0f2f4] py-3.5 px-4 text-[#0C2F3D] outline-none placeholder:text-[#8a9a9e] focus:border-[#0C5D6E]/30 focus:bg-white"
         />
-        <input
-          type="date"
-          value={dateOfBirth}
-          onChange={(e) => setDateOfBirth(e.target.value)}
-          className="w-full rounded-full border border-transparent bg-[#f0f2f4] py-3.5 px-4 text-[#0C2F3D] outline-none focus:border-[#0C5D6E]/30 focus:bg-white"
-        />
+        {/* Date of birth removed */}
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="relative">
             <input

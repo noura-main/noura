@@ -17,10 +17,10 @@ export default function AssistantChatModal({ onClose }: { onClose: () => void })
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const userData = useUserData();
-  function makeGreeting(fullName?: string | null): Msg {
+  function makeGreeting(name?: string | null): Msg {
     const greeting: Msg = {
       role: "assistant",
-      content: `Hello ${fullName ?? "there"}! I'm your Noura personal assistant! I can help with recipe ideas, ingredient swaps, meal planning tips, tracking against your goals, and any general questions you may have. Ask me anything!`,
+      content: `Hello ${name ?? ""}! I'm your Noura personal assistant! I can help with recipe ideas, ingredient swaps, meal planning tips, tracking against your goals, and any general questions you may have. Ask me anything!`,
       created_at: new Date().toISOString(),
     };
     return greeting;
@@ -28,7 +28,8 @@ export default function AssistantChatModal({ onClose }: { onClose: () => void })
 
   function handleClear() {
     try {
-      const greeting = makeGreeting(userData.full_name);
+      const displayName = userData.first_name ?? userData.full_name ?? null;
+      const greeting = makeGreeting(displayName);
       setMessages([greeting]);
       saveToCache([greeting], sessionId);
       // also remove raw cache key for compatibility
@@ -41,12 +42,13 @@ export default function AssistantChatModal({ onClose }: { onClose: () => void })
   // Ensure a single greeting message exists (deterministic initializer)
   useEffect(() => {
     if (!messages || messages.length === 0) {
-      const greeting = makeGreeting(userData.full_name);
+      const displayName = userData.first_name ?? userData.full_name ?? null;
+      const greeting = makeGreeting(displayName);
       setMessages([greeting]);
       try { saveToCache([greeting], sessionId); } catch (e) {}
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userData.full_name]);
+  }, [userData.first_name, userData.full_name]);
 
   useEffect(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), [messages]);
 

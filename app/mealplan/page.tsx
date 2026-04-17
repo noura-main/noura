@@ -20,9 +20,35 @@ function toCategory(t: DbMealType): MealCardProps["category"] {
 
 function parseIngredients(raw: unknown): string[] {
   if (!raw) return [];
+
+  function stringifyIngredient(item: unknown): string {
+    if (item == null) return "";
+    if (typeof item === "string") return item;
+    if (typeof item === "number") return String(item);
+    if (Array.isArray(item)) return item.map(stringifyIngredient).filter(Boolean).join(", ");
+    if (typeof item === "object") {
+      const obj = item as Record<string, unknown>;
+      const prefer = ["name", "ingredient", "item", "text", "label", "display"];
+      for (const k of prefer) {
+        if (obj[k]) return String(obj[k]);
+      }
+      const qty = obj["quantity"] ?? obj["qty"] ?? obj["amount"] ?? null;
+      const unit = obj["unit"] ?? obj["quantity_unit"] ?? "";
+      const nm = obj["name"] ?? obj["ingredient"] ?? obj["item"] ?? null;
+      if (nm) return `${qty ?? ""}${unit ? ` ${unit}` : ""} ${String(nm)}`.trim();
+      // fallback: join primitive values
+      const vals = Object.values(obj)
+        .filter((v) => v != null)
+        .map((v) => (typeof v === "object" ? JSON.stringify(v) : String(v)));
+      return vals.join(" ");
+    }
+    return String(item);
+  }
+
   // jsonb or text[] — Supabase already deserialised to JS array
-  if (Array.isArray(raw)) return raw.map((s) => String(s).trim()).filter(Boolean);
+  if (Array.isArray(raw)) return raw.map((s) => stringifyIngredient(s).trim()).filter(Boolean);
   if (typeof raw !== "string") return [];
+
   // PostgreSQL array literal: {item1,"item 2",item3}
   if (raw.startsWith("{") && raw.endsWith("}")) {
     return raw
@@ -31,14 +57,16 @@ function parseIngredients(raw: unknown): string[] {
       .map((s) => s.trim().replace(/^"|"$/g, ""))
       .filter(Boolean);
   }
-  // JSON string: ["item1","item2"]
+
+  // JSON string: ["item1","item2"] or array of objects
   try {
     const parsed: unknown = JSON.parse(raw);
-    if (Array.isArray(parsed)) return parsed.map(String).filter(Boolean);
+    if (Array.isArray(parsed)) return parsed.map((p) => stringifyIngredient(p).trim()).filter(Boolean);
   } catch {
     // plain comma-separated fallback
     return raw.split(",").map((s) => s.trim()).filter(Boolean);
   }
+
   return [];
 }
 

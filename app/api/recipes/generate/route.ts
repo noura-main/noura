@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createHash, randomUUID } from "crypto";
 import type {
   MealType,
   GeneratedRecipes,
@@ -6,10 +7,9 @@ import type {
   UserPreferences,
 } from "@/lib/recipes/types";
 
-// ── Models ────────────────────────────────────────────────────────────────────
-const PRIMARY_MODEL = "llama-3.3-70b-versatile";
-const FALLBACK_MODEL = "llama-3.1-8b-instant";
-const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
+// ── Models / API ──────────────────────────────────────────────────────────────
+const PRIMARY_MODEL = "gemini-2.5-flash-lite";
+const GEMINI_API_URL = process.env.NEXT_PUBLIC_GEMINI_API_URL ?? "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent";
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -17,6 +17,10 @@ interface GenerateRequest {
   inventory: InventoryItem[];
   activeTrend: string;
   preferences: UserPreferences | null;
+  specialInstructions?: string | null;
+  mealTypes?: MealType[];
+  count?: number;
+  background?: boolean;
 }
 
 interface RawRecipe {
@@ -67,7 +71,6 @@ async function fetchUnsplashImage(
     const results = data.results ?? [];
     if (!results.length) return fallback;
 
-    // Prefer results whose alt/description contains query tokens
     const tokens = query.toLowerCase().split(/[^a-z0-9]+/).filter((t: string) => t.length > 2);
     for (const r of results) {
       const desc = ((r.alt_description ?? "") + " " + (r.description ?? "")).toLowerCase();
@@ -83,133 +86,139 @@ async function fetchUnsplashImage(
 
 function sanitizeDishName(name: string): string {
   if (!name || typeof name !== "string") return String(name ?? "");
-  // Remove parenthetical notes and trailing substitution phrases
   let s = name.split("(")[0];
   s = s.split("—")[0];
   s = s.split("-")[0];
   s = s.replace(/\bsub(stitute)?s?\b.*$/i, "").trim();
-  // Remove any stray punctuation around the name
   return s.replace(/^["'\s]+|["'\s]+$/g, "").trim();
 }
 
+  function stringifyIngredient(item: any): string {
+    if (item == null) return "";
+    if (typeof item === "string") return item.trim();
+    if (typeof item === "number" || typeof item === "bigint") return String(item);
+    if (Array.isArray(item)) {
+      return item.map((it) => stringifyIngredient(it)).filter(Boolean).join(" ").trim();
+    }
+    if (typeof item === "object") {
+      const nameKeys = ["name", "ingredient", "item", "label", "title", "text"];
+      const qtyKeys = ["quantity", "qty", "amount", "count", "number", "num"];
+      const unitKeys = ["unit", "quantity_unit", "u", "measure", "measurement", "measure_unit"];
+
+      const name = nameKeys.map((k) => (k in item ? item[k] : undefined)).find((v) => v != null);
+      const qty = qtyKeys.map((k) => (k in item ? item[k] : undefined)).find((v) => v != null);
+      const unit = unitKeys.map((k) => (k in item ? item[k] : undefined)).find((v) => v != null);
+
+      const parts: string[] = [];
+      if (qty != null && String(qty).trim() !== "") parts.push(String(qty).trim());
+      if (unit != null && String(unit).trim() !== "") parts.push(String(unit).trim());
+      if (name != null) {
+        if (typeof name === "string") parts.push(name.trim());
+        else parts.push(stringifyIngredient(name));
+      } else {
+        const fallback = Object.values(item).find((v) => typeof v === "string" && v.trim().length > 0);
+        if (fallback) parts.push(String(fallback).trim());
+      }
+      const joined = parts.join(" ").replace(/\s+/g, " ").trim();
+      if (joined) return joined;
+
+      const vals = Object.values(item)
+        .map((v) => (typeof v === "string" || typeof v === "number" ? String(v) : ""))
+        .filter(Boolean);
+      return vals.join(" ").trim();
+    }
+    return String(item);
+  }
+
 // ── Prompt builder ────────────────────────────────────────────────────────────
-const SPICE_LABELS = ["Mild (no heat at all)", "Gentle (a hint of warmth)", "Medium (moderate heat)", "Hot (clearly spicy)", "Extra Hot (very intense heat)"];
+const SPICE_LABELS = [
+  "Mild (no heat at all)",
+  "Gentle (a hint of warmth)",
+  "Medium (moderate heat)",
+  "Hot (clearly spicy)",
+  "Extra Hot (very intense heat)",
+];
 
 function buildPrompt(
   inventory: InventoryItem[],
   preferences: UserPreferences | null,
   activeTrend: string,
-  mealTypes: MealType[] = ["breakfast", "lunch", "dinner", "snacks"]
+  mealTypes: MealType[] = ["breakfast", "lunch", "dinner", "snacks"],
+  specialInstructions: string | null = null,
+  count: number = 5
 ): string {
   const inventoryList =
     inventory.length > 0
-      ? inventory.map((i) => `${i.name} (${i.quantity} ${i.quantity_unit})`).join(", ")
-      : "No inventory provided — use common pantry staples";
+      ? inventory
+          .slice(0, 60)
+          .map((i) => `${i.quantity}${i.quantity_unit ?? ""} ${i.name}`)
+          .join(", ")
+      : "No inventory provided";
 
-  // ── HARD rules (only allergies + diets) ──────────────────────────────────
   const forbidden = preferences?.allergies ?? [];
   const activeDiets = preferences?.diets ?? [];
-
-  const forbiddenLine = forbidden.length
-    ? `NEVER use these allergens (under any name or alias): ${forbidden.join(", ")}`
-    : "No allergen restrictions.";
-
-  const dietLine = activeDiets.length
-    ? `All recipes MUST comply with: ${activeDiets.join(", ")}`
-    : "No diet restrictions.";
-
-  // ── SOFT preferences (best-effort, NEVER reduce count) ────────────────────
-  const softLines: string[] = [];
   const noGoItems = preferences?.noGoItems ?? [];
-  if (noGoItems.length) softLines.push(`Avoid if possible (personal dislikes, not allergies): ${noGoItems.join(", ")}`);
   const cuisines = preferences?.cuisines ?? [];
-  if (cuisines.length) softLines.push(`Preferred cuisines: ${cuisines.join(", ")}`);
-  softLines.push(`Preferred spice level: ${SPICE_LABELS[preferences?.spiceLevel ?? 2]}`);
+  const spice = SPICE_LABELS[preferences?.spiceLevel ?? 2];
   const equipment = preferences?.equipment ?? [];
-  if (equipment.length) softLines.push(`Available equipment: ${equipment.join(", ")}`);
-  softLines.push(`Skill level: ${preferences?.skillLevel ?? "intermediate"}`);
-  softLines.push(preferences?.fusionMode ? "Style: Modern Fusion encouraged" : "Style: Authentic Traditional preferred");
-
+  const skill = preferences?.skillLevel ?? "intermediate";
+  const fusion = preferences?.fusionMode ? "on" : "off";
   const mealTypesList = mealTypes.join(", ");
-  const jsonKeys = mealTypes.map((m) => `  "${m}": [ ...exactly 10 items ]`).join(",\n");
+  const jsonKeys = mealTypes.map((m) => `  "${m}": [ ...exactly ${count} items ]`).join(",\n");
 
-  return `You are a professional nutritionist and chef for Noura, a health-focused meal planning app.
-
-TASK: Generate exactly 10 recipes for EACH of these meal types: ${mealTypesList}.
-You MUST always produce exactly 10 unique recipes per meal type. NEVER produce fewer than 10.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-HARD REQUIREMENTS (never violate, no exceptions):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-1. ${forbiddenLine}
-2. ${dietLine}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-SOFT PREFERENCES (follow where practical — do NOT reduce count to satisfy these):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-${softLines.map((l, i) => `${i + 1}. ${l}`).join("\n")}
-
-GENERAL RULES:
-- Use primarily the kitchen inventory; if an ingredient is missing, suggest a substitute in parentheses in description only.
-- Relate each recipe to the trending focus.
-- The 'name' field: a single concise dish name only — no notes or parentheses.
-- Descriptions: 1-2 sentences covering the dish and its flavour.
-- Calories: single integer per serving.
-
-KITCHEN INVENTORY:
-${inventoryList}
-
-TRENDING FOCUS: ${activeTrend}
-
-Return ONLY a valid JSON object — no markdown, no explanation:
-{
-${jsonKeys}
+  return [
+    `You are a professional nutritionist and chef for Noura.`,
+    ``,
+    `Task: For each meal type (${mealTypesList}) produce exactly ${count} unique recipes in JSON only.`,
+    ``,
+    `HARD (never violate):`,
+    `1) NEVER use these allergens: ${forbidden.length ? forbidden.join(", ") : "none"}.`,
+    `2) MUST comply with diets: ${activeDiets.length ? activeDiets.join(", ") : "none"}.`,
+    `3) SPECIAL INSTRUCTIONS (MUST FOLLOW): ${specialInstructions && String(specialInstructions).trim() ? String(specialInstructions).trim() : "none"}.`,
+    ``,
+    `Soft prefs (do not reduce count): Avoid: ${noGoItems.join(", ") || "none"}; Cuisines: ${cuisines.join(", ") || "any"}; Spice: ${spice}; Equipment: ${equipment.join(", ") || "standard"}; Skill: ${skill}; Fusion: ${fusion}.`,
+    ``,
+    `Inventory: ${inventoryList}`,
+    ``,
+    `Return only a JSON object with keys: {`,
+    `${jsonKeys}`,
+    `}`,
+    ``,
+    `Each recipe object: {"name":"...","description":"2-3 short sentences","calories":Number,"prepTime":Number,"imageQuery":"...","ingredients":["qty ingredient"],"instructions":"1. ...\\n2. ...\\n3. ...\\n4. ...","protein_g":Number,"fat_g":Number,"carbs_g":Number}`,
+    ``,
+      `Rules: instructions = 4 short numbered steps (keep each step concise). Descriptions MUST be 2-3 sentences. Be brief and use plain JSON.`,
+      `INGREDIENTS MUST be plain strings formatted as quantity + unit + ingredient name (examples: "2 cups rolled oats", "1 tbsp olive oil"). Do NOT return ingredient objects or arrays; return simple strings only.`,
+      ``,
+  ].join("\n");
 }
 
-Each item shape:
-{ "name": "Recipe Name", "description": "Short description.", "calories": 420, "prepTime": 20, "imageQuery": "food photo query", "ingredients": ["2 large eggs", "1 cup spinach"], "instructions": "Step 1: ...\\nStep 2: ...\\nStep 3: ...\\nStep 4: ...", "protein_g": 18, "fat_g": 12, "carbs_g": 30 }
-
-FIELD RULES:
-- 'ingredients': measurement + ingredient every entry.
-- 'prepTime': total minutes start to plate (integer).
-- 'instructions': minimum 4 numbered steps on separate lines.
-- 'protein_g', 'fat_g', 'carbs_g': integer grams per serving.`;
-}
-
-// ── Groq API caller ───────────────────────────────────────────────────────────
+// ── Gemini API caller ─────────────────────────────────────────────────────────
 // Per-call max_tokens budget.
-// Each call requests 10 recipes for ONE meal type.
-// ~200 tokens/recipe × 10 = ~2000 output tokens needed.
-// llama-3.3-70b-versatile TPM: ~unlimited; llama-3.1-8b-instant TPM: 6000.
-// Keep total (prompt ~600 + max_tokens) under 6000 for the fallback.
 const MAX_TOKENS: Record<string, number> = {
-  [PRIMARY_MODEL]: 5000,
-  [FALLBACK_MODEL]: 4000,
+  [PRIMARY_MODEL]: 2500,
 };
 
-async function callGroq(prompt: string, model: string): Promise<Response> {
-  const apiKey = process.env.NEXT_PUBLIC_GROK_API_KEY;
-  if (!apiKey) throw new Error("NEXT_PUBLIC_GROK_API_KEY is not configured");
+async function callGemini(prompt: string): Promise<Response> {
+  const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+  if (!apiKey) throw new Error("NEXT_PUBLIC_GEMINI_API_KEY is not configured");
 
-  return fetch(GROQ_API_URL, {
+  const maxTokens = MAX_TOKENS[PRIMARY_MODEL] ?? 7500;
+  const url = new URL(GEMINI_API_URL);
+  url.searchParams.set("key", apiKey);
+
+  return fetch(url.toString(), {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model,
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a helpful culinary assistant. Always respond with valid JSON only, no markdown code blocks.",
-        },
-        { role: "user", content: prompt },
-      ],
-      temperature: 0.75,
-      max_tokens: MAX_TOKENS[model] ?? 7500,
-      response_format: { type: "json_object" },
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      systemInstruction: {
+        parts: [{ text: "You are a helpful culinary assistant. Always respond with valid JSON only, no markdown code blocks." }],
+      },
+      generationConfig: {
+        temperature: 0.75,
+        maxOutputTokens: maxTokens,
+        responseMimeType: "application/json",
+      },
     }),
   });
 }
@@ -217,22 +226,20 @@ async function callGroq(prompt: string, model: string): Promise<Response> {
 // ── Response parser + image enrichment ───────────────────────────────────────
 async function parseAndEnrichRecipes(
   rawJson: string,
-  unsplashKey: string | undefined
+  unsplashKey: string | undefined,
+  count: number = 5
 ): Promise<GeneratedRecipes> {
-  const parsed: RawGenerated = JSON.parse(rawJson);
-  const mealTypes: MealType[] = ["breakfast", "lunch", "dinner", "snacks"];
+  const parsed: RawGenerated = JSON.parse(rawJson || "{}");
+  const ALL_MEAL_TYPES: MealType[] = ["breakfast", "lunch", "dinner", "snacks"];
+  const returnedMeals: MealType[] = Object.keys(parsed).length
+    ? (Object.keys(parsed) as MealType[])
+    : ALL_MEAL_TYPES;
 
-  // Build one image-fetch promise per recipe (all 20 in parallel)
   const imageFetches: Promise<string>[] = [];
-  const recipeOrder: { meal: MealType; idx: number }[] = [];
-
-  for (const meal of mealTypes) {
-    const list = (parsed[meal] ?? []).slice(0, 10);
-    list.forEach((r, idx) => {
-      // Ensure the recipe `name` is strictly a dish name (no substitutions in the name)
+  for (const meal of returnedMeals) {
+    const list = (parsed[meal] ?? []).slice(0, count);
+    list.forEach((r: RawRecipe) => {
       r.name = sanitizeDishName(String(r.name ?? ""));
-
-      recipeOrder.push({ meal, idx });
       imageFetches.push(
         unsplashKey
           ? fetchUnsplashImage(String(r.name || r.imageQuery || ""), unsplashKey, FALLBACK_IMAGES[meal])
@@ -244,20 +251,22 @@ async function parseAndEnrichRecipes(
   const imageResults = await Promise.allSettled(imageFetches);
 
   const result = {} as GeneratedRecipes;
-  for (const meal of mealTypes) result[meal] = [];
+  for (const m of ALL_MEAL_TYPES) result[m] = [];
 
   let globalIdx = 0;
-  for (const meal of mealTypes) {
-    const list = (parsed[meal] ?? []).slice(0, 10);
-    result[meal] = list.map((r, i) => {
+  for (const meal of returnedMeals) {
+    const list = (parsed[meal] ?? []).slice(0, count);
+    result[meal] = list.map((r: RawRecipe, i: number) => {
       const settled = imageResults[globalIdx++];
       return {
         id: i + 1,
         name: r.name,
         description: r.description,
         calories: Number(r.calories) || 0,
-        image: settled.status === "fulfilled" ? settled.value : FALLBACK_IMAGES[meal],
-        ingredients: Array.isArray(r.ingredients) ? r.ingredients : [],
+        image: settled.status === "fulfilled" ? (settled.value as string) : FALLBACK_IMAGES[meal],
+        ingredients: Array.isArray(r.ingredients)
+          ? (r.ingredients as any[]).map(stringifyIngredient).filter(Boolean)
+          : [],
         instructions: r.instructions ?? "",
         prepTime: Number(r.prepTime) || undefined,
         protein_g: r.protein_g != null ? Number(r.protein_g) : undefined,
@@ -270,84 +279,182 @@ async function parseAndEnrichRecipes(
   return result;
 }
 
-// ── Route handler ─────────────────────────────────────────────────────────────
+// ── Simple in-memory cache + job queue (ephemeral) ──────────────────────────
+type JobStatus = "pending" | "running" | "done" | "failed";
+interface JobEntry {
+  id: string;
+  status: JobStatus;
+  result?: GeneratedRecipes;
+  error?: string;
+  requestKey?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+const JOBS = new Map<string, JobEntry>();
+const CACHE = new Map<string, { recipes: GeneratedRecipes; createdAt: number }>();
+const CACHE_TTL = 1000 * 60 * 30; // 30 minutes
+
+function canonicalize(value: any): any {
+  if (value === null || typeof value !== "object") return value;
+  if (Array.isArray(value)) return value.map(canonicalize);
+  const keys = Object.keys(value).sort();
+  const out: any = {};
+  for (const k of keys) out[k] = canonicalize(value[k]);
+  return out;
+}
+
+function computeRequestKey(obj: any): string {
+  const s = JSON.stringify(canonicalize(obj));
+  return createHash("sha256").update(s).digest("hex");
+}
+
+// ── Route handlers ─────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   try {
     const body: GenerateRequest = await req.json();
-    const { inventory, activeTrend, preferences } = body;
+    const {
+      inventory = [],
+      activeTrend,
+      preferences = null,
+      specialInstructions = null,
+      mealTypes = ["breakfast", "lunch", "dinner", "snacks"],
+      count = 5,
+      background = true,
+    } = body as Partial<GenerateRequest>;
 
     if (!activeTrend) {
-      return NextResponse.json(
-        { error: "Missing required field: activeTrend" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing required field: activeTrend" }, { status: 400 });
     }
 
-    // ── Four parallel calls — one per meal type ──────────────────────────
-    // Splitting keeps each request small enough for both primary and fallback
-    // models (total tokens well under the 6 000 TPM limit on llama-3.1-8b).
-    const mealTypes: MealType[] = ["breakfast", "lunch", "dinner", "snacks"];
+    const requestKey = computeRequestKey({ inventory, preferences, activeTrend, specialInstructions, mealTypes, count });
+    const cached = CACHE.get(requestKey);
+    if (cached && Date.now() - cached.createdAt < CACHE_TTL) {
+      return NextResponse.json({ recipes: cached.recipes, cached: true });
+    }
+
+    const jobId = randomUUID();
+    JOBS.set(jobId, { id: jobId, status: "pending", requestKey, createdAt: Date.now(), updatedAt: Date.now() });
 
     async function runCall(prompt: string, label: string): Promise<string> {
-      let res = await callGroq(prompt, PRIMARY_MODEL);
-      if (res.status === 429 || res.status === 413) {
-        console.warn(`[generate:${label}] ${res.status} on primary — falling back to`, FALLBACK_MODEL);
-        res = await callGroq(prompt, FALLBACK_MODEL);
-      }
-      if (!res.ok) {
-        const errBody = await res.text();
-          console.error(`[generate:${label}] Groq error`, res.status, errBody);
-          let friendlyMsg: string;
-          try {
-            const parsed = JSON.parse(errBody) as { error?: { message?: string; code?: string } };
-            const rawMsg = parsed?.error?.message ?? errBody;
+      const MAX_ATTEMPTS = 3;
+      let attempt = 0;
+      let lastErr: Error | null = null;
 
-            // If this is a rate-limit error from Groq, extract the suggested wait time
-            // and present a concise, user-friendly message that includes how long to wait.
-            if (parsed?.error?.code === "rate_limit_exceeded" || /rate limit/i.test(rawMsg)) {
-              const m = rawMsg.match(/Please try again in ([0-9.]+)s/i);
-              const seconds = m ? Math.ceil(Number(m[1])) : null;
-              if (seconds && Number.isFinite(seconds)) {
-                friendlyMsg = `The AI service is temporarily busy. Please wait about ${seconds} second${seconds === 1 ? "" : "s"} and try again.`;
-              } else {
-                friendlyMsg = `The AI service is temporarily busy due to rate limits. Please try again shortly.`;
-              }
-            } else {
-              friendlyMsg = rawMsg;
-            }
-          } catch {
-            friendlyMsg = errBody;
+      while (attempt < MAX_ATTEMPTS) {
+        attempt++;
+        try {
+          let res = await callGemini(prompt);
+          if (res.status === 429 || res.status === 413) {
+            // Rate limited or payload too large on primary. Use exponential backoff and retry same model.
+            const base = Math.pow(2, attempt) * 1000;
+            const jitter = Math.floor(Math.random() * 500);
+            const waitMs = base + jitter;
+            console.warn(`[generate:${label}] primary ${res.status} — rate limited, retrying in ${waitMs}ms (attempt ${attempt}/${MAX_ATTEMPTS})`);
+            await new Promise((r) => setTimeout(r, waitMs));
+            continue;
           }
-          throw new Error(`AI service error (${res.status}): ${friendlyMsg}`);
+
+          if (!res.ok) {
+            const errBody = await res.text();
+            console.error(`[generate:${label}] Gemini error (attempt ${attempt})`, res.status, errBody);
+            try {
+              const parsed = JSON.parse(errBody) as { error?: { message?: string; code?: string } };
+              const rawMsg = parsed?.error?.message ?? errBody;
+              const isRate = parsed?.error?.code === "rate_limit_exceeded" || /rate limit/i.test(rawMsg);
+              if (isRate && attempt < MAX_ATTEMPTS) {
+                const base = Math.pow(2, attempt) * 1000;
+                const jitter = Math.floor(Math.random() * 500);
+                const waitMs = base + jitter;
+                console.warn(`[generate:${label}] rate-limited, retrying in ${waitMs}ms (attempt ${attempt}/${MAX_ATTEMPTS})`);
+                await new Promise((r) => setTimeout(r, waitMs));
+                continue;
+              }
+              let friendlyMsg: string;
+              if (parsed?.error?.code === "rate_limit_exceeded" || /rate limit/i.test(rawMsg)) {
+                const m = rawMsg.match(/Please try again in ([0-9.]+)s/i);
+                const seconds = m ? Math.ceil(Number(m[1])) : null;
+                friendlyMsg = seconds && Number.isFinite(seconds)
+                  ? `The AI service is temporarily busy. Please wait about ${seconds} second${seconds === 1 ? "" : "s"} and try again.`
+                  : `The AI service is temporarily busy due to rate limits. Please try again shortly.`;
+              } else {
+                friendlyMsg = rawMsg;
+              }
+              throw new Error(`AI service error (${res.status}): ${friendlyMsg}`);
+            } catch (parseErr) {
+              lastErr = new Error(`AI service error (${res.status}): ${errBody}`);
+              if (attempt < MAX_ATTEMPTS) {
+                const waitMs = Math.pow(2, attempt) * 1000 + Math.floor(Math.random() * 500);
+                await new Promise((r) => setTimeout(r, waitMs));
+                continue;
+              }
+              throw lastErr;
+            }
+          }
+
+          const data = await res.json();
+          return data.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
+        } catch (err) {
+          lastErr = err instanceof Error ? err : new Error(String(err));
+          if (attempt < MAX_ATTEMPTS) {
+            const waitMs = Math.pow(2, attempt) * 1000 + Math.floor(Math.random() * 500);
+            console.warn(`[generate:${label}] request failed (attempt ${attempt}), retrying in ${waitMs}ms`, lastErr.message);
+            await new Promise((r) => setTimeout(r, waitMs));
+            continue;
+          }
+          throw lastErr;
+        }
       }
-      const data = await res.json();
-      return data.choices?.[0]?.message?.content ?? "{}";
+      throw lastErr ?? new Error("AI service error: unknown failure");
     }
 
-    const inv = inventory ?? [];
-    const prefs = preferences ?? null;
-    const contents = await Promise.all(
-      mealTypes.map((m) =>
-        runCall(buildPrompt(inv, prefs, activeTrend, [m]), m)
-      )
-    );
+    // Background job (non-blocking)
+    (async () => {
+      JOBS.set(jobId, { id: jobId, status: "running", requestKey, createdAt: JOBS.get(jobId)!.createdAt, updatedAt: Date.now() });
+      try {
+        const inv = inventory ?? [];
+        const prefs = preferences ?? null;
+        const unsplashKey = (process.env.UNSPLASH_ACCESS_KEY ?? process.env.NEXT_PUBLIC_UNSPLASH_ACCESS_KEY)?.trim();
 
-    const unsplashKey = (process.env.UNSPLASH_ACCESS_KEY ?? process.env.NEXT_PUBLIC_UNSPLASH_ACCESS_KEY)?.trim();
-    const enriched = await Promise.all(
-      contents.map((c) => parseAndEnrichRecipes(c, unsplashKey))
-    );
+        const aggregated: GeneratedRecipes = { breakfast: [], lunch: [], dinner: [], snacks: [] };
 
-    const recipes: GeneratedRecipes = {
-      breakfast: enriched[0].breakfast,
-      lunch:     enriched[1].lunch,
-      dinner:    enriched[2].dinner,
-      snacks:    enriched[3].snacks,
-    };
+        for (const m of mealTypes) {
+          const prompt = buildPrompt(inv, prefs, activeTrend, [m], specialInstructions ?? null, count);
+          const content = await runCall(prompt, m);
+          const parsed = await parseAndEnrichRecipes(content, unsplashKey, count);
+          aggregated[m] = parsed[m] ?? [];
+        }
 
-    return NextResponse.json({ recipes });
+        CACHE.set(requestKey, { recipes: aggregated, createdAt: Date.now() });
+        JOBS.set(jobId, { id: jobId, status: "done", result: aggregated, requestKey, createdAt: JOBS.get(jobId)!.createdAt, updatedAt: Date.now() });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        JOBS.set(jobId, { id: jobId, status: "failed", error: message, requestKey, createdAt: JOBS.get(jobId)!.createdAt, updatedAt: Date.now() });
+        console.error(`[generate:${jobId}] background job failed`, err);
+      }
+    })();
+
+    return NextResponse.json({ jobId }, { status: 202 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Internal server error";
     console.error("[generate] unexpected error", err);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function GET(req: NextRequest) {
+  try {
+    const jobId = req.nextUrl.searchParams.get("jobId");
+    if (!jobId) {
+      return NextResponse.json({ error: "Missing jobId" }, { status: 400 });
+    }
+    const job = JOBS.get(jobId);
+    if (!job) {
+      return NextResponse.json({ error: "Job not found" }, { status: 404 });
+    }
+    return NextResponse.json({ id: job.id, status: job.status, result: job.result, error: job.error });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Internal server error";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
