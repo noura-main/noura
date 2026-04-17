@@ -205,21 +205,29 @@ async function callGemini(prompt: string): Promise<Response> {
   const maxTokens = MAX_TOKENS[PRIMARY_MODEL] ?? 7500;
   const url = new URL(GEMINI_API_URL);
   url.searchParams.set("key", apiKey);
+  const body = {
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    systemInstruction: {
+      parts: [{ text: "You are a helpful culinary assistant. Always respond with valid JSON only, no markdown code blocks." }],
+    },
+    generationConfig: {
+      temperature: 0.75,
+      maxOutputTokens: maxTokens,
+      responseMimeType: "application/json",
+    },
+  };
+
+  // Log the final prompt being sent to Gemini for debugging
+  try {
+    console.log("[callGemini] prompt:", prompt);
+  } catch (e) {
+    // ignore logging errors
+  }
 
   return fetch(url.toString(), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      systemInstruction: {
-        parts: [{ text: "You are a helpful culinary assistant. Always respond with valid JSON only, no markdown code blocks." }],
-      },
-      generationConfig: {
-        temperature: 0.75,
-        maxOutputTokens: maxTokens,
-        responseMimeType: "application/json",
-      },
-    }),
+    body: JSON.stringify(body),
   });
 }
 

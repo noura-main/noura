@@ -29,25 +29,40 @@ export async function POST(req: NextRequest) {
 
     const mimeType = file.type || "image/jpeg";
 
+    const payload = {
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { text: systemPrompt },
+            { inlineData: { mimeType, data: base64Image } },
+          ],
+        },
+      ],
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens: 1024,
+        responseMimeType: "application/json",
+      },
+    };
+
+    // Log prompt (omit actual base64 image data for privacy/size)
+    try {
+      const safe = JSON.parse(JSON.stringify(payload));
+      if (safe?.contents?.[0]?.parts) {
+        for (const p of safe.contents[0].parts) {
+          if (p.inlineData && p.inlineData.data) p.inlineData.data = "<base64 omitted>";
+        }
+      }
+      console.log("[process-receipt] request payload:", JSON.stringify(safe));
+    } catch (e) {
+      // ignore logging errors
+    }
+
     const res = await fetch(geminiUrl.toString(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [
-              { text: systemPrompt },
-              { inlineData: { mimeType, data: base64Image } },
-            ],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.1,
-          maxOutputTokens: 1024,
-          responseMimeType: "application/json",
-        },
-      }),
+      body: JSON.stringify(payload),
     });
 
     if (!res.ok) {

@@ -71,20 +71,29 @@ async function callGemini(ingredient: string): Promise<SwapResponse> {
   const url = new URL(GEMINI_API_URL);
   url.searchParams.set("key", apiKey);
 
+  const payload = {
+    contents: [
+      { role: "user", parts: [{ text: `Ingredient: ${ingredient.trim()}` }] },
+    ],
+    systemInstruction: { parts: [{ text: buildSystemPrompt() }] },
+    generationConfig: {
+      temperature: 0.3,
+      maxOutputTokens: 800,
+      responseMimeType: "application/json",
+    },
+  };
+
+  // Log the request payload (prompt) being sent to Gemini
+  try {
+    console.log("[ingredient-swap] request payload:", JSON.stringify(payload));
+  } catch (e) {
+    // ignore
+  }
+
   const res = await fetch(url.toString(), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [
-        { role: "user", parts: [{ text: `Ingredient: ${ingredient.trim()}` }] },
-      ],
-      systemInstruction: { parts: [{ text: buildSystemPrompt() }] },
-      generationConfig: {
-        temperature: 0.3,
-        maxOutputTokens: 800,
-        responseMimeType: "application/json",
-      },
-    }),
+    body: JSON.stringify(payload),
   });
 
   if (!res.ok) {

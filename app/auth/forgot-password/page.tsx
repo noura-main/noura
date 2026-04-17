@@ -26,13 +26,11 @@ export default function ForgotPasswordPage() {
       return;
     }
 
-    const appUrl = (process.env.NEXT_PUBLIC_APP_URL as string) || window.location.origin;
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(
-      email,
-      {
-        redirectTo: `${appUrl}/auth/update-password`,
-      }
-    );
+    const rawAppUrl = (process.env.NEXT_PUBLIC_APP_URL as string) || window.location.origin;
+    const appUrl = rawAppUrl.replace(/\/$/, "");
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${appUrl}/auth/update-password`,
+    });
 
     setLoading(false);
     if (resetError) {
