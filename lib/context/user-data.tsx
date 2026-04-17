@@ -151,7 +151,12 @@ export function UserDataProvider({ children }: { children: React.ReactNode }) {
           };
         }
 
-        const p = profileRes.data ?? {};
+        const p = (profileRes.data ?? {}) as {
+          first_name?: string | null;
+          last_name?: string | null;
+          full_name?: string | null;
+          avatar_url?: string | null;
+        };
         const first = p.first_name ?? null;
         const last = p.last_name ?? null;
         const computedFull = first || last ? `${(first ?? "").trim()} ${(last ?? "").trim()}`.trim() : (p.full_name ?? null);
