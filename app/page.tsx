@@ -68,7 +68,7 @@ export default function Home() {
         "/general/founders/shreya.png",
     },
     {
-      name: "Aadhira Vivekananad",
+      name: "Aadhira Vivekanandan",
       role: "Business Management",
       blurb:
         "Aadhira spearheads market research, financial strategy, and product development at Noura. With a background in building tech-driven solutions, she ensures Noura’s features are scalable, personalized, and rooted in real-world user needs.",
